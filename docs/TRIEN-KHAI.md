@@ -197,6 +197,8 @@ rclone ls mahoa:casa-lead
 set -a && . /etc/casa-lead.env && set +a && .venv/bin/python -m app.nhac_sang --thu
 ```
 
+**CASA Mầm non dùng chung lớp mã hoá này** (cùng mật khẩu, thư mục `casa-mamnon`): dòng cron 02:00 của app đó được nối thêm `; rclone copy /var/lib/casa-mamnon/backups mahoa:casa-mamnon >> /home/casa/backup-casa.log 2>&1`. Đã thử khôi phục bằng mật khẩu đã lưu trên một máy khác (16/11/2026): đạt.
+
 **Lấy lại dữ liệu từ Drive** (VPS mới hoặc máy khác): cài rclone, tạo lại `gdrive` và `mahoa` như trên với **đúng mật khẩu đã lưu** (mật khẩu thứ hai vẫn để trống), rồi:
 
 ```bash
