@@ -51,7 +51,7 @@ def tin_cho_chu(conn: sqlite3.Connection, chu: sqlite3.Row, hom_nay: date) -> st
              for lt in moi]
     dong += ["", f"Lead bỏ quên (đang chăm sóc mà quá hạn): {len(bo_quen)}"]
     if messenger.da_cau_hinh():
-        dong += [f"Messenger chưa giao: {len(messenger.chua_nhan(conn))} (Quản trị → Messenger chưa nhận)"]
+        dong += [f"Messenger chưa giao: {messenger.so_chua_nhan(conn)} (Quản trị → Messenger chưa nhận)"]
     return "\n".join(dong)
 
 
@@ -82,7 +82,7 @@ def tin_cho_nhom(conn: sqlite3.Connection, hom_nay: date) -> str:
                  f"{dongho.doc_gio(lt.row['ngay_nhan']):%d/%m}" for lt in moi]
         dong += [f"Bỏ quên (đang chăm sóc mà quá hạn): {len(bo_quen)}"]
         if messenger.da_cau_hinh():
-            dong += [f"Messenger chưa giao: {len(messenger.chua_nhan(conn))}"]
+            dong += [f"Messenger chưa giao: {messenger.so_chua_nhan(conn)}"]
     url = os.environ.get("CASA_LEAD_URL", "")
     if url:
         dong += ["", url]
@@ -96,7 +96,10 @@ def chay(conn: sqlite3.Connection, hom_nay: date, thu: bool = False, gui=None) -
     if q.la_ngay_nghi(hom_nay, logic.ngay_nghi(conn)):
         return []
     if not thu:
-        messenger.dong_bo(conn)  # để số "Messenger chưa giao" là số mới nhất; lỗi thì dùng dữ liệu cũ
+        try:  # để số "Messenger chưa giao" là số mới nhất; lỗi gì cũng không được chặn tin nhắc sáng
+            messenger.dong_bo(conn)
+        except Exception:  # noqa: BLE001
+            log.exception("Đồng bộ lead Messenger lỗi; tin nhắc dùng dữ liệu cũ")
     nhom = db.lay_he_thong(conn, "telegram_nhom")
     if nhom:
         tin = tin_cho_nhom(conn, hom_nay)

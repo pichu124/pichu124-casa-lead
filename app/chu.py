@@ -37,7 +37,7 @@ def trang_chu(request: Request):
         nguoi = _nguoi(request, conn)
         _chu(nguoi)
         so = sum(q.bo_quen(lt.giai_doan, lt.khan) for lt in _tat_ca(conn, nguoi))
-        return _ve(request, "chu.html", nguoi, so_bo_quen=so, so_messenger=len(messenger.chua_nhan(conn)),
+        return _ve(request, "chu.html", nguoi, so_bo_quen=so, so_messenger=messenger.so_chua_nhan(conn),
                    messenger_cau_hinh=messenger.da_cau_hinh())
     finally:
         conn.close()

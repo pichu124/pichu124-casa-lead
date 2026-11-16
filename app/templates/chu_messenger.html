@@ -21,7 +21,7 @@
   <strong>{{ h.fb_name }}</strong>{% if h.kid_name %} · bé {{ h.kid_name }}{% endif %}{% if h.kid_age %} · {{ h.kid_age }}{% endif %}
   <div>{{ h.phone }}{% if h.campus %} · {{ h.campus }}{% endif %}{% if h.area %} · {{ h.area }}{% endif %}</div>
   <div class="nho">{{ h.stage or h.event }}{% if h.ad_title %} · quảng cáo: {{ h.ad_title }}{% endif %}{% if h.page %} · {{ h.page }}{% endif %}
-    {% if h.updated_at or h.time %} · cập nhật {{ (h.updated_at or h.time)[:16] }}{% endif %}</div>
+    {% if h.cap_nhat_vn %} · cập nhật {{ h.cap_nhat_vn }}{% endif %}</div>
   {% if h.visit_request %}<div class="nho">Hẹn: {{ h.visit_request }}</div>{% endif %}
   {% if h.last_message %}<div class="ghi-chu">{{ h.last_message[:300] }}</div>{% endif %}
   {% if h.trung %}<p class="loi">Trùng SĐT với: {% for r in h.trung %}<a href="/lead/{{ r.id }}">{{ r.ten_ph }}</a> (sale {{ r.ten_sale or 'chưa giao' }}){{ ', ' if not loop.last }}{% endfor %}.

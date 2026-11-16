@@ -162,3 +162,75 @@ def test_tin_nhom_buoi_sang_bao_so_messenger_chua_giao(sheet):
     nhac_sang.chay(conn, date(2026, 11, 4), gui=lambda chat, tin: gui.append(tin) or True)
     assert "Messenger chưa giao: 2" in gui[0]
     assert sheet[1]  # nhắc sáng tự đồng bộ trước khi đếm
+
+
+# ------------------------------------------------------------------ các lỗi reviewer tìm ra
+
+def test_url_hong_khong_lam_mat_nhac_sang_va_khong_loi_500(du_lieu, monkeypatch):
+    monkeypatch.setenv("LEADS_SHEET_WEBHOOK_URL", "https://script.google.com/macros/s/thu/exec\r")
+    monkeypatch.setenv("LEADS_READ_TOKEN", "doc-thu")
+    conn = db.ket_noi()
+    conn.execute("UPDATE nguoi_dung SET telegram_chat_id = '333' WHERE ten_dang_nhap = 'sale3'")
+    conn.commit()
+    monkeypatch.setenv("LEADS_SHEET_WEBHOOK_URL", "https://script.google.com:abc/exec")
+    gui = []
+    nhac_sang.chay(conn, date(2026, 11, 4), gui=lambda chat, tin: gui.append(chat) or True)
+    assert "333" in gui  # tin nhắc vẫn đi dù Sheet hỏng
+    r = dang_nhap("chu").get("/chu/messenger")
+    assert r.status_code == 200 and "lỗi" in r.text
+
+
+def test_url_co_ky_tu_xuong_dong_cuoi_van_dung(monkeypatch):
+    import httpx
+    monkeypatch.setenv("LEADS_SHEET_WEBHOOK_URL", "https://script.google.com/macros/s/thu/exec\r")
+    monkeypatch.setenv("LEADS_READ_TOKEN", "doc-thu\r")
+    gui = {}
+
+    class Tra:
+        status_code = 200
+        def json(self):
+            return {"ok": True, "rows": []}
+    monkeypatch.setattr(httpx, "post", lambda url, json, **kw: gui.update(url=url, body=json) or Tra())
+    messenger._tai()
+    assert gui["url"].endswith("/exec") and gui["body"]["token"] == "doc-thu"
+
+
+def test_sheet_loi_thi_khong_goi_lai_ngay(sheet, monkeypatch):
+    conn = db.ket_noi()
+    goi = []
+
+    def hong():
+        goi.append(1)
+        raise messenger.LoiSheet("treo")
+    monkeypatch.setattr(messenger, "_tai", hong)
+    messenger.dong_bo_neu_cu(conn)
+    messenger.dong_bo_neu_cu(conn)
+    assert len(goi) == 1
+
+
+def test_hang_da_xoa_khoi_sheet_khong_con_hien(sheet):
+    hang, _ = sheet
+    conn = db.ket_noi()
+    messenger.dong_bo(conn)
+    del hang[0]  # 1001 bị xoá khỏi Sheet (vd hàng thử)
+    messenger.dong_bo(conn)
+    assert _ds(conn) == ["1002"]
+
+
+def test_ngay_hien_dang_viet_nam(sheet):
+    r = dang_nhap("chu").get("/chu/messenger")
+    assert "cập nhật 03/11/2026 09:15" in r.text and "2026-11-03" not in r.text
+
+
+def test_nhieu_hang_va_nhieu_lead_van_nhanh(sheet, monkeypatch):
+    import time
+    hang, _ = sheet
+    hang[:] = [_hang(str(5000 + i), sdt=f"09{i:08d}") for i in range(800)]
+    conn = db.ket_noi()
+    conn.executemany("INSERT INTO lead (ngay_nhan, ten_ph, sdt, tao_luc) VALUES ('2026-11-01', 'L Thử', ?, '2026-11-01')",
+                     [(f"08{i:08d}",) for i in range(2000)])
+    conn.commit()
+    messenger.dong_bo(conn)
+    t = time.perf_counter()
+    assert len(messenger.chua_nhan(conn)) == 800
+    assert time.perf_counter() - t < 1.0

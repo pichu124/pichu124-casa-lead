@@ -25,25 +25,31 @@ log = logging.getLogger("casa_lead.messenger")
 
 NGUON = "Facebook Messenger"
 TEN_LA = "khách chưa rõ tên"
-CACH_LAN_TU_DONG = 60  # giây: mở màn Messenger nhiều lần liền thì không gọi Sheet lại
+CACH_LAN_TU_DONG = 60  # giây: mở màn Messenger nhiều lần liền (kể cả khi Sheet đang lỗi) thì không gọi lại
+THOI_GIAN_CHO = httpx.Timeout(10.0, connect=5.0)
 
 
 class LoiSheet(Exception):
     pass
 
 
+def _bien(ten: str) -> str:
+    # strip: tệp env sửa trên Windows có \r cuối dòng, cron nạp bằng `. /etc/casa-lead.env` giữ nguyên nó
+    return (os.environ.get(ten) or "").strip()
+
+
 def da_cau_hinh() -> bool:
-    return bool(os.environ.get("LEADS_SHEET_WEBHOOK_URL") and os.environ.get("LEADS_READ_TOKEN"))
+    return bool(_bien("LEADS_SHEET_WEBHOOK_URL") and _bien("LEADS_READ_TOKEN"))
 
 
 def _tai() -> list[dict]:
     """Gọi web app, trả các hàng tab Leads (khóa như COLUMNS của script). Lỗi thì ném LoiSheet."""
     try:
-        r = httpx.post(os.environ["LEADS_SHEET_WEBHOOK_URL"],
-                       json={"type": "leads_read", "token": os.environ["LEADS_READ_TOKEN"]},
-                       follow_redirects=True, timeout=30)
-    except httpx.HTTPError as e:
-        raise LoiSheet(f"Không gọi được Sheet ({type(e).__name__})") from None
+        r = httpx.post(_bien("LEADS_SHEET_WEBHOOK_URL"),
+                       json={"type": "leads_read", "token": _bien("LEADS_READ_TOKEN")},
+                       follow_redirects=True, timeout=THOI_GIAN_CHO)
+    except Exception as e:  # noqa: BLE001 — URL sai dạng (InvalidURL) không phải HTTPError; mọi lỗi gọi đều là LoiSheet
+        raise LoiSheet(f"Không gọi được Sheet ({type(e).__name__}): kiểm tra LEADS_SHEET_WEBHOOK_URL") from None
     if r.status_code != 200:
         raise LoiSheet(f"Sheet trả mã {r.status_code}")
     try:
@@ -60,6 +66,8 @@ def dong_bo(conn: sqlite3.Connection) -> int | None:
     if not da_cau_hinh():
         return None
     bay_gio = dongho.ghi_gio(dongho.bay_gio())
+    db.dat_he_thong(conn, "messenger_thu_luc", bay_gio)  # giới hạn số lần gọi, kể cả khi lần này lỗi
+    conn.commit()
     try:
         hang = _tai()
     except LoiSheet as e:
@@ -67,6 +75,10 @@ def dong_bo(conn: sqlite3.Connection) -> int | None:
         db.dat_he_thong(conn, "messenger_loi", f"{dongho.gio_vn(dongho.bay_gio())}: {e}")
         conn.commit()
         return None
+    # Dấu của lần lấy này (giờ + số thứ tự, hai lần trong cùng một giây vẫn khác nhau): hàng không mang dấu
+    # mới nhất là hàng đã bị xoá khỏi Sheet. Không DELETE: chỉ là không hiện nữa.
+    lan = int(db.lay_he_thong(conn, "messenger_lan", "0") or 0) + 1
+    dau = f"{bay_gio} #{lan}"
     so = 0
     for h in hang:
         cid = str(h.get("customer_id") or "").strip().lstrip("'")
@@ -76,9 +88,11 @@ def dong_bo(conn: sqlite3.Connection) -> int | None:
         conn.execute("INSERT INTO messenger (customer_id, du_lieu, cap_nhat_sheet, lay_luc) VALUES (?, ?, ?, ?) "
                      "ON CONFLICT(customer_id) DO UPDATE SET du_lieu = excluded.du_lieu, "
                      "cap_nhat_sheet = excluded.cap_nhat_sheet, lay_luc = excluded.lay_luc",
-                     (cid, json.dumps(sach, ensure_ascii=False), sach.get("updated_at") or sach.get("time") or "", bay_gio))
+                     (cid, json.dumps(sach, ensure_ascii=False), sach.get("updated_at") or sach.get("time") or "", dau))
         so += 1
     db.dat_he_thong(conn, "messenger_lay_luc", bay_gio)
+    db.dat_he_thong(conn, "messenger_lan", str(lan))
+    db.dat_he_thong(conn, "messenger_dau", dau)
     db.dat_he_thong(conn, "messenger_loi", "")
     conn.commit()
     return so
@@ -86,27 +100,50 @@ def dong_bo(conn: sqlite3.Connection) -> int | None:
 
 def dong_bo_neu_cu(conn: sqlite3.Connection) -> None:
     """Đồng bộ nếu lần trước đã quá CACH_LAN_TU_DONG giây (mở màn Messenger)."""
-    truoc = db.lay_he_thong(conn, "messenger_lay_luc")
+    truoc = db.lay_he_thong(conn, "messenger_thu_luc")
     if truoc and (dongho.bay_gio() - dongho.doc_gio(truoc)).total_seconds() < CACH_LAN_TU_DONG:
         return
     dong_bo(conn)
 
 
-def chua_nhan(conn: sqlite3.Connection) -> list[dict]:
-    """Phụ huynh đã để SĐT cho bot mà chưa có hồ sơ (chưa giao) và chưa bị bỏ qua. Mới cập nhật lên đầu.
-    Mỗi hàng: các khóa của tab Leads + `trung` (lead khác cùng SĐT, nếu có)."""
+def chua_nhan(conn: sqlite3.Connection, kem_trung: bool = True) -> list[dict]:
+    """Phụ huynh đã để SĐT cho bot mà chưa có hồ sơ (chưa giao), chưa bị bỏ qua, và còn trên Sheet ở lần lấy
+    gần nhất (hàng đã xoá khỏi Sheet, vd hàng thử, không hiện nữa). Mới cập nhật lên đầu.
+    Mỗi hàng: các khóa của tab Leads + `cap_nhat_vn` + `trung` (lead khác cùng SĐT; chỉ khi kem_trung)."""
     da_giao = {r[0] for r in conn.execute("SELECT customer_id FROM lead WHERE customer_id != ''")}
+    lan_cuoi = db.lay_he_thong(conn, "messenger_dau")
+    theo_so: dict[str, list[sqlite3.Row]] = {}
+    if kem_trung:  # dựng một lần, tra theo từng hàng (không quét bảng lead cho mỗi hàng)
+        for r in conn.execute("SELECT lead.*, nguoi_dung.ten AS ten_sale FROM lead "
+                              "LEFT JOIN nguoi_dung ON nguoi_dung.id = lead.sale_id"):
+            theo_so.setdefault(logic.chu_so(r["sdt"]), []).append(r)
     kq = []
-    for r in conn.execute("SELECT * FROM messenger WHERE bo_qua = 0 ORDER BY cap_nhat_sheet DESC, customer_id"):
+    for r in conn.execute("SELECT * FROM messenger WHERE bo_qua = 0 AND lay_luc = ? "
+                          "ORDER BY cap_nhat_sheet DESC, customer_id", (lan_cuoi,)):
         if r["customer_id"] in da_giao:
             continue
         h = json.loads(r["du_lieu"])
-        if len(logic.chu_so(h.get("phone", ""))) < 9:
+        so = logic.chu_so(h.get("phone", ""))
+        if len(so) < 9:
             continue
         h["customer_id"] = r["customer_id"]
-        h["trung"] = logic.lead_trung(conn, h["phone"])
+        h["cap_nhat_vn"] = _gio(h.get("updated_at") or h.get("time") or "")
+        if kem_trung:
+            h["trung"] = theo_so.get(so, [])
         kq.append(h)
     return kq
+
+
+def so_chua_nhan(conn: sqlite3.Connection) -> int:
+    return len(chua_nhan(conn, kem_trung=False))
+
+
+def _gio(s: str) -> str:
+    """"2026-11-03 09:15:00" → "03/11/2026 09:15"; chuỗi lạ thì giữ nguyên."""
+    try:
+        return dongho.gio_vn(dongho.doc_gio(s))
+    except (ValueError, TypeError):
+        return s
 
 
 def mot_hang(conn: sqlite3.Connection, customer_id: str) -> dict | None:
