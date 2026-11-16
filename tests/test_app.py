@@ -327,3 +327,29 @@ def test_ngay_sai_o_bi_an_khong_chan_luu(du_lieu):
         "csrf": csrf(c, f"/lead/{lead}/ghi-nhan"), "phuong_thuc": "Gọi điện", "tinh_trang": "Đang cân nhắc",
         "muc_quan_tam": "Hời hợt", "hen_lai_sau": "1 tuần", "ngay_nhap_hoc": "20277-01-01"}, follow_redirects=False)
     assert r.status_code == 303, r.text
+
+
+def test_ngay_sai_o_dang_hien_van_bao_loi(du_lieu):
+    c = dang_nhap("sale3")
+    lead = id_lead("Lan Thử")
+    goc = {"phuong_thuc": "Gọi điện", "muc_quan_tam": "Hời hợt"}
+    for them in ({"tinh_trang": "Yêu cầu gọi lại sau", "hen_lai_sau": "Chọn ngày", "ngay_hen_goi_lai": "20277-01-01"},
+                 {"tinh_trang": "Đã hẹn tham quan / học thử", "ngay_hen_tham_quan": "20277-01-01"},
+                 {"tinh_trang": "Đã đặt cọc", "ngay_nhap_hoc": "20277-01-01"}):
+        r = c.post(f"/lead/{lead}/ghi-nhan", data={"csrf": csrf(c, f"/lead/{lead}/ghi-nhan"), **goc, **them})
+        assert r.status_code == 400 and "không hợp lệ" in r.text, them
+
+
+def test_ngay_sinh_em_sai_o_bi_an_khong_chan_luu_lead(du_lieu):
+    c = dang_nhap("sale3")
+    lead = id_lead("Lan Thử")
+    r = _lead("Lan Thử")
+    data = {"csrf": csrf(c, f"/lead/{lead}/sua"), "ten_ph": r["ten_ph"], "sdt": r["sdt"], "em_nho": "Không",
+            "ngay_sinh_em": "20277-01-01"}
+    assert c.post(f"/lead/{lead}/sua", data=data, follow_redirects=False).status_code == 303
+    data["em_nho"] = "Có em nhỏ"
+    assert c.post(f"/lead/{lead}/sua", data=data, follow_redirects=False).status_code == 400
+
+
+def test_an_sdt_dau_tru_toan_hoc():
+    assert "345" not in telegram.an_sdt("0912\u2212345\u2212678")

@@ -19,9 +19,9 @@ import httpx
 from .db import dat_he_thong, lay_he_thong
 
 log = logging.getLogger("casa_lead.telegram")
-# Chuỗi chữ số có thể kèm dấu ngăn (cách thường, cách cứng, chấm, phẩy, gạch nối, gạch dài, gạch dưới, ngoặc):
+# Chuỗi chữ số có thể kèm dấu ngăn (cách thường, cách cứng, chấm, phẩy, gạch nối, gạch dài, dấu trừ, gạch dưới, ngoặc):
 # đủ 9 chữ số trở lên thì coi là SĐT. Không gồm "/" (giữ ngày 04/11/2026) và không gồm xuống dòng.
-CUM_SO = re.compile(r"\+?\(?\d(?:[\d.,()_\-\u2010-\u2015]|[^\S\n]){6,}\d\)?")
+CUM_SO = re.compile(r"\+?\(?\d(?:[\d.,()_\-\u2010-\u2015\u2212]|[^\S\n]){6,}\d\)?")
 DAI_TIN = 3500  # Telegram từ chối tin dài hơn 4096 ký tự
 
 

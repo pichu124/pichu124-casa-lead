@@ -276,7 +276,8 @@ def _gia_tri_lead(form, nguoi: sqlite3.Row, cu: sqlite3.Row | None) -> tuple[dic
     v["ph_quan_tam"] = ", ".join(x for x in form.getlist("ph_quan_tam") if x)
     loi: list[str] = []
     v["ngay_sinh_be"] = _ngay_nhap(form, "ngay_sinh_be", loi, "Ngày sinh bé")
-    v["ngay_sinh_em"] = _ngay_nhap(form, "ngay_sinh_em", loi, "Ngày sinh của em")
+    loi_em: list[str] = []  # chỉ báo khi ô ngày sinh em đang hiện (Có em nhỏ / Sắp sinh em)
+    v["ngay_sinh_em"] = _ngay_nhap(form, "ngay_sinh_em", loi_em, "Ngày sinh của em")
     if not v["ten_ph"]:
         loi.append("Chưa nhập tên phụ huynh.")
     if len(logic.chu_so(v["sdt"])) < 9:
@@ -286,6 +287,7 @@ def _gia_tri_lead(form, nguoi: sqlite3.Row, cu: sqlite3.Row | None) -> tuple[dic
     if v["em_nho"] not in q.EM_NHO:
         v["em_nho"] = ""
     if v["em_nho"] in ("Có em nhỏ", "Sắp sinh em"):
+        loi += loi_em
         if not v["ngay_sinh_em"] and not _chu_nhan(form, "ngay_sinh_em"):
             loi.append("Chưa nhập ngày sinh (hoặc dự sinh) của em.")
     else:

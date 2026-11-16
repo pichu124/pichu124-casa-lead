@@ -277,9 +277,36 @@ def test_gui_uu_dai_khong_ghi_trung(du_lieu):
 
 
 def test_xuat_cham_soc_co_lan_thu_va_han_lien_he_tiep(du_lieu):
-    hang = list(csv.DictReader(io.StringIO(dang_nhap("chu").get("/chu/xuat/cham-soc.csv").text.lstrip("﻿"))))
-    assert all(h["Lần thứ"].isdigit() for h in hang)
-    assert any(re.fullmatch(r"\d{4}-\d{2}-\d{2}", h["Hạn liên hệ tiếp"]) for h in hang)
+    from app import logic
+    hang = list(csv.DictReader(io.StringIO(dang_nhap("chu").get("/chu/xuat/cham-soc.csv").text.lstrip("\ufeff"))))
+    conn = db.ket_noi()
+    ch, nghi = logic.cau_hinh(conn), logic.ngay_nghi(conn)
+    lan = {r["id"]: (r["lead_id"], logic.lan_cham_soc(r)) for r in conn.execute("SELECT * FROM cham_soc")}
+    conn.close()
+    for h in hang:
+        lead, c = lan[int(h["Mã"])]
+        truoc = [x for i, (l, x) in lan.items() if l == lead and i != int(h["Mã"])]
+        han = q.han_lien_he_tiep(c, truoc, ch, nghi)
+        assert h["Lần thứ"] == str(q.lan_thu(truoc, c))
+        assert h["Hạn liên hệ tiếp"] == (han.isoformat() if han else "")
+    assert max(int(h["Lần thứ"]) for h in hang) >= 2
+    assert any(h["Hạn liên hệ tiếp"] and h["Hạn liên hệ tiếp"] != h["Thời gian"][:10] for h in hang)
+
+
+def test_chu_giao_lead_cho_sale_da_nghi_khong_gui(du_lieu):
+    from app.main import _bao_duoc_giao
+    _noi_telegram("sale2", "222")
+    _sql("UPDATE nguoi_dung SET dang_lam = 0 WHERE ten_dang_nhap = 'sale2'")
+    lead = id_lead("Đào Thử")
+    _sql("UPDATE lead SET sale_id = (SELECT id FROM nguoi_dung WHERE ten_dang_nhap = 'sale2') WHERE id = ?", (lead,))
+    _bao_duoc_giao(lead, "Chủ")
+    assert not du_lieu
+
+
+def test_cai_dat_so_khong_phai_ascii_khong_loi(du_lieu):
+    c = dang_nhap("chu")
+    r = c.post("/chu/cai-dat", data={"csrf": csrf(c, "/chu/cai-dat"), "viec": "cau_hinh", "ch_L1": "²"})
+    assert r.status_code == 200 and "Bỏ qua ô không hợp lệ: L1" in r.text
 
 
 def test_xuat_csv_khong_de_o_thanh_cong_thuc(du_lieu):

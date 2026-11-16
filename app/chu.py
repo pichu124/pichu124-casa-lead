@@ -295,7 +295,7 @@ async def luu_cai_dat(request: Request):
                 if not v:
                     continue
                 tu, den = GIOI_HAN_CAU_HINH.get(khoa, (0, 1000))
-                if v.isdigit() and tu <= int(v) <= den:
+                if v.isascii() and v.isdigit() and tu <= int(v) <= den:
                     moi[khoa] = int(v)
                 else:
                     sai.append(khoa)
