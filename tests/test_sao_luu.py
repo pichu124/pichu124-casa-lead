@@ -26,3 +26,26 @@ def test_don_ban_cu_theo_lich_giu(tmp_path):
     ngay_cu = [t.date() for t in con if timedelta(days=2) < bay - t <= timedelta(days=14)]
     assert len(ngay_cu) == len(set(ngay_cu))  # mỗi ngày một bản
     assert (tmp_path / "khong-phai-ban-sao.db").exists()  # không đụng tệp khác
+
+
+def test_du_lieu_mau_khong_chay_khi_da_co_nguoi_dung(tmp_path, monkeypatch):
+    import pytest
+    from scripts import du_lieu_mau
+    monkeypatch.setenv("CASA_LEAD_DATA", str(tmp_path))
+    conn = db.ket_noi()
+    db.khoi_tao(conn)
+    conn.execute("INSERT INTO nguoi_dung (ten_dang_nhap, ten, vai_tro, mat_khau, tao_luc) VALUES ('hieu', 'Hiệu', 'chu', 'x', '2026-11-16')")
+    conn.commit()
+    with pytest.raises(SystemExit):
+        du_lieu_mau.nap(conn, __import__("datetime").date(2026, 11, 2))
+
+
+def test_chay_that_bat_buoc_thu_muc_du_lieu_ngoai_kho(monkeypatch):
+    import pytest
+    monkeypatch.setenv("CASA_LEAD_ENV", "production")
+    monkeypatch.delenv("CASA_LEAD_DATA", raising=False)
+    with pytest.raises(SystemExit):
+        db.duong_dan_db()
+    monkeypatch.setenv("CASA_LEAD_DATA", str(db.GOC / "data"))
+    with pytest.raises(SystemExit):
+        db.duong_dan_db()

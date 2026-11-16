@@ -11,12 +11,15 @@ Chủ nhận lead mới chưa ai liên hệ đã quá hạn và số lead bỏ q
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 import sqlite3
 import sys
 from datetime import date
 
 from . import db, dongho, logic, quy_tac_nhac as q, telegram
+
+log = logging.getLogger("casa_lead.nhac_sang")
 
 
 def _dong(lt: logic.LeadTinh) -> str:
@@ -60,8 +63,8 @@ def chay(conn: sqlite3.Connection, hom_nay: date, thu: bool = False, gui=None) -
         if not tin:
             continue
         kq.append((nguoi["ten_dang_nhap"], tin))
-        if not thu:
-            gui(nguoi["telegram_chat_id"] or "", tin)
+        if not thu and not gui(nguoi["telegram_chat_id"] or "", tin):
+            log.warning("Không gửi được tin nhắc sáng cho %s (chưa nối Telegram hoặc lỗi mạng)", nguoi["ten_dang_nhap"])
     return kq
 
 
@@ -77,7 +80,7 @@ def main(argv: list[str] | None = None) -> int:
     if not ds:
         print(f"{hom_nay:%d/%m/%Y}: ngày nghỉ hoặc không có ai cần nhắc.")
     for ai, tin in ds:
-        print(f"--- {ai}\n{tin}\n" if a.thu else f"Đã gửi: {ai}")
+        print(f"--- {ai}\n{tin}\n" if a.thu else f"Đã xử lý: {ai}")
     return 0
 
 

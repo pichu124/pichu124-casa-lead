@@ -241,3 +241,74 @@ def test_noi_telegram_bang_ma_start(du_lieu):
 
 def test_healthz(du_lieu):
     assert TestClient(app).get("/healthz").text == "ok"
+
+
+# ------------------------------------------------------------------ lỗi reviewer tìm ra (đợt A)
+
+def test_ngay_vo_ly_bi_tu_choi_khong_lam_sap(du_lieu):
+    c = dang_nhap("sale1")
+    lid = id_lead("Hoa Thử")
+    for o, ngay in (("ngay_nhap_hoc", "9999-12-31"), ("ngay_nhap_hoc", "0001-01-01")):
+        r = c.post(f"/lead/{lid}/ghi-nhan", data={"csrf": csrf(c, f"/lead/{lid}/ghi-nhan"), "phuong_thuc": "Gọi điện",
+                                                  "tinh_trang": "Đã đặt cọc", "muc_quan_tam": "Rất quan tâm",
+                                                  "da_gui_thu_moi": "1", o: ngay})
+        assert r.status_code == 400 and "Ngày" in r.text
+    r = c.post(f"/lead/{lid}/ghi-nhan", data={"csrf": csrf(c, f"/lead/{lid}/ghi-nhan"), "phuong_thuc": "Gọi điện",
+                                              "tinh_trang": "Đã hẹn tham quan / học thử", "muc_quan_tam": "Rất quan tâm",
+                                              "ngay_hen_tham_quan": "0001-01-01"})
+    assert r.status_code == 400
+    assert c.get("/cua-toi").status_code == 200
+    assert dang_nhap("chu").get("/tat-ca").status_code == 200
+
+
+def test_ngay_29_thang_2_khong_loi(du_lieu, monkeypatch):
+    monkeypatch.setattr(dongho, "GIO_CO_DINH", datetime(2028, 2, 29, 9, 0))
+    assert dang_nhap("sale6").get("/cua-toi").status_code == 200  # Thu Thử: dài hạn, không có hạn
+    assert dang_nhap("chu").get("/tat-ca").status_code == 200
+
+
+def test_nguon_em_nho_go_tay_van_bao_trung_khac_sale(du_lieu):
+    conn = db.ket_noi()
+    conn.execute("UPDATE nguoi_dung SET telegram_chat_id = '111' WHERE ten_dang_nhap = 'chu'")
+    conn.commit()
+    c = dang_nhap("sale1")
+    c.post("/lead-moi", data={"csrf": csrf(c, "/lead-moi"), "ten_ph": "Lan Giả", "sdt": "0900000601",
+                              "nguon": "Em nhỏ trong gia đình"})
+    assert len(du_lieu) == 1 and "Lan Thử" in du_lieu[0][1]
+
+
+def test_sua_sdt_thanh_so_trung_bao_chu(du_lieu):
+    conn = db.ket_noi()
+    conn.execute("UPDATE nguoi_dung SET telegram_chat_id = '111' WHERE ten_dang_nhap = 'chu'")
+    conn.commit()
+    c = dang_nhap("sale1")
+    lid = id_lead("Hoa Thử")
+    form = {k: v or "" for k, v in _lead("Hoa Thử").items() if k in ("ten_ph", "ten_be", "tuoi_be", "co_so", "nguon")}
+    form.update(csrf=csrf(c, f"/lead/{lid}/sua"), sdt="0900000601")
+    c.post(f"/lead/{lid}/sua", data=form)
+    assert len(du_lieu) == 1 and "Lan Thử" in du_lieu[0][1]
+    form.update(ghi_chu="sửa lần hai, SĐT không đổi")
+    c.post(f"/lead/{lid}/sua", data=form)
+    assert len(du_lieu) == 1  # không báo lại khi SĐT không đổi
+
+
+def test_chu_sua_lead_cua_sale_da_nghi_khong_mat_nguoi_phu_trach(du_lieu):
+    conn = db.ket_noi()
+    conn.execute("UPDATE nguoi_dung SET dang_lam = 0 WHERE ten_dang_nhap = 'sale1'")
+    conn.commit()
+    trang = dang_nhap("chu").get(f"/lead/{id_lead('Hoa Thử')}/sua").text
+    sale1 = conn.execute("SELECT id FROM nguoi_dung WHERE ten_dang_nhap = 'sale1'").fetchone()[0]
+    assert re.search(rf'<option value="{sale1}" selected', trang)
+
+
+def test_tin_dai_duoc_chia_nho():
+    gui = []
+    import app.telegram as tg
+    phan = tg.chia_tin("\n".join(f"- Phụ huynh số {i} (bé Thử), Quá hạn: Gọi lại" for i in range(300)))
+    assert len(phan) > 1 and all(len(p) <= 4000 for p in phan)
+
+
+def test_an_sdt_nhieu_kieu_viet():
+    for s in ("(091) 234 5678", "912345678", "0912 - 345 - 678", "+84 (91) 234 5678"):
+        assert not re.search(r"\d{3}", telegram.an_sdt(f"Chị Lan {s}").replace("[SĐT]", "")), s
+    assert telegram.an_sdt("Quá hạn 12 ngày, nhận 04/11") == "Quá hạn 12 ngày, nhận 04/11"

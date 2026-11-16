@@ -26,8 +26,9 @@ MAT_KHAU_MAU = "thu-app-123"
 
 
 def nap(conn, hom_nay: date) -> None:
-    if conn.execute("SELECT COUNT(*) FROM lead").fetchone()[0]:
-        raise SystemExit("Cơ sở dữ liệu đã có lead: không nạp dữ liệu mẫu để khỏi trộn với dữ liệu thật.")
+    if conn.execute("SELECT COUNT(*) FROM lead").fetchone()[0] or conn.execute("SELECT COUNT(*) FROM nguoi_dung").fetchone()[0]:
+        raise SystemExit("Cơ sở dữ liệu đã có lead hoặc tài khoản: không nạp dữ liệu mẫu (tài khoản mẫu có "
+                         "mật khẩu công khai, không được lẫn vào máy thật).")
     bam = auth.bam(MAT_KHAU_MAU)
     id_cua: dict[str, int] = {}
     for email, ten, co_so, vai, dang_lam in q.SALE_MAU:

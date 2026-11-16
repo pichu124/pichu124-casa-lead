@@ -26,7 +26,7 @@
   {% if nguoi.vai_tro == 'chu' %}
   <label>Sale phụ trách
     <select name="sale_id"><option value="">Chưa giao</option>
-      {% for s in ds_sale %}<option value="{{ s.id }}" {{ 'selected' if s.id == v.sale_id }}>{{ s.ten }}</option>{% endfor %}</select></label>
+      {% for s in ds_sale %}<option value="{{ s.id }}" {{ 'selected' if s.id == v.sale_id }}>{{ s.ten }}{% if not s.dang_lam %} (đã nghỉ){% endif %}</option>{% endfor %}</select></label>
   {% endif %}
   <label>Chất lượng lead
     <select name="chat_luong" data-dieu-khien="chat_luong"><option value="">—</option>

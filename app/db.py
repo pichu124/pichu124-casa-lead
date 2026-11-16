@@ -112,8 +112,16 @@ CHAT_LUONG = ["Tốt", "Trung bình", "Kém"]
 
 
 def duong_dan_db() -> Path:
-    thu_muc = Path(os.environ.get("CASA_LEAD_DATA", GOC / "data"))
-    return thu_muc / "casa-lead.db"
+    """Tệp cơ sở dữ liệu. Khi chạy thật (CASA_LEAD_ENV=production) bắt buộc đặt CASA_LEAD_DATA ra NGOÀI
+    thư mục mã: thiếu biến thì cron hay lệnh tạo tài khoản sẽ lặng lẽ dùng một cơ sở dữ liệu rỗng khác."""
+    bien = os.environ.get("CASA_LEAD_DATA")
+    if os.environ.get("CASA_LEAD_ENV") == "production":
+        if not bien:
+            raise SystemExit("Chạy thật mà chưa đặt CASA_LEAD_DATA (vd /var/lib/casa-lead). Xem docs/TRIEN-KHAI.md.")
+        if Path(bien).resolve().is_relative_to(GOC):
+            raise SystemExit("CASA_LEAD_DATA đang nằm trong thư mục mã: dữ liệu phụ huynh có thể lọt lên GitHub. "
+                             "Đặt ra ngoài, vd /var/lib/casa-lead.")
+    return Path(bien or GOC / "data") / "casa-lead.db"
 
 
 def ket_noi(duong_dan: Path | None = None) -> sqlite3.Connection:

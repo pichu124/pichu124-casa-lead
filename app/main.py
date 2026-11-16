@@ -9,6 +9,7 @@ import logging
 from contextlib import asynccontextmanager
 import os
 import sqlite3
+from datetime import date
 from pathlib import Path
 from urllib.parse import urlencode
 
@@ -16,6 +17,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.concurrency import run_in_threadpool
 from starlette.middleware.sessions import SessionMiddleware
 
 from . import auth, db, dongho, logic, quy_tac_nhac as q, telegram
@@ -117,14 +119,24 @@ def _chu_nhan(form, ten: str) -> str:
     return (form.get(ten) or "").strip()
 
 
-def _ngay_nhap(form, ten: str) -> str | None:
+NAM_HOP_LE = range(2000, 2101)
+
+
+def _ngay_nhap(form, ten: str, loi: list[str] | None = None, nhan: str = "Ngày") -> str | None:
+    """Ngày từ biểu mẫu. Ngày không đọc được hoặc ngoài năm 2000–2100 thì báo lỗi (một ngày vô lý
+    như 9999-12-31 làm bộ quy tắc tràn số và hỏng màn hình của mọi người)."""
     s = _chu_nhan(form, ten)
     if not s:
         return None
     try:
-        return dongho.doc_ngay(s).isoformat()
+        d = dongho.doc_ngay(s)
     except ValueError:
+        d = None
+    if d is None or d.year not in NAM_HOP_LE:
+        if loi is not None:
+            loi.append(f"{nhan} không hợp lệ: nhập ngày trong khoảng năm 2000 đến 2100.")
         return None
+    return d.isoformat()
 
 
 # ------------------------------------------------------------------ đăng nhập
@@ -205,7 +217,7 @@ def _nhom(ds: list[logic.LeadTinh]) -> list[tuple[str, list[logic.LeadTinh]]]:
     for lt in ds:
         g.setdefault(lt.nhom, []).append(lt)
     for v in g.values():
-        v.sort(key=lambda lt: (lt.han or dongho.hom_nay().replace(year=9999), lt.row["id"]))
+        v.sort(key=lambda lt: (lt.han is None, lt.han or date.min, lt.row["id"]))
     return sorted(g.items())
 
 
@@ -262,9 +274,9 @@ def _gia_tri_lead(form, nguoi: sqlite3.Row, cu: sqlite3.Row | None) -> tuple[dic
     v = {k: _chu_nhan(form, k) for k in ("ten_ph", "sdt", "ten_be", "tuoi_be", "co_so", "nguon", "chien_dich",
                                          "chat_luong", "ly_do_chat_luong", "ghi_chu", "em_nho")}
     v["ph_quan_tam"] = ", ".join(x for x in form.getlist("ph_quan_tam") if x)
-    v["ngay_sinh_be"] = _ngay_nhap(form, "ngay_sinh_be")
-    v["ngay_sinh_em"] = _ngay_nhap(form, "ngay_sinh_em")
-    loi = []
+    loi: list[str] = []
+    v["ngay_sinh_be"] = _ngay_nhap(form, "ngay_sinh_be", loi, "Ngày sinh bé")
+    v["ngay_sinh_em"] = _ngay_nhap(form, "ngay_sinh_em", loi, "Ngày sinh của em")
     if not v["ten_ph"]:
         loi.append("Chưa nhập tên phụ huynh.")
     if len(logic.chu_so(v["sdt"])) < 9:
@@ -274,7 +286,7 @@ def _gia_tri_lead(form, nguoi: sqlite3.Row, cu: sqlite3.Row | None) -> tuple[dic
     if v["em_nho"] not in q.EM_NHO:
         v["em_nho"] = ""
     if v["em_nho"] in ("Có em nhỏ", "Sắp sinh em"):
-        if not v["ngay_sinh_em"]:
+        if not v["ngay_sinh_em"] and not _chu_nhan(form, "ngay_sinh_em"):
             loi.append("Chưa nhập ngày sinh (hoặc dự sinh) của em.")
     else:
         v["ngay_sinh_em"] = None
@@ -293,7 +305,9 @@ def _ve_form_lead(request, conn, nguoi, v, loi, lead_id=None, status_code=200):
                ds_co_so=db.danh_muc(conn, "Cơ sở"), ds_nguon=db.danh_muc(conn, "Nguồn"),
                ds_quan_tam=db.danh_muc(conn, "Mối quan tâm"), ds_ly_do_cl=db.danh_muc(conn, "Lý do chất lượng"),
                ds_chat_luong=db.CHAT_LUONG,
-               ds_sale=list(conn.execute("SELECT id, ten FROM nguoi_dung WHERE dang_lam = 1 ORDER BY ten")))
+               # gồm cả sale đang phụ trách dù đã nghỉ, để lưu biểu mẫu không lặng lẽ bỏ giao lead
+               ds_sale=list(conn.execute("SELECT id, ten, dang_lam FROM nguoi_dung WHERE dang_lam = 1 OR id = ? "
+                                         "ORDER BY dang_lam DESC, ten", (v.get("sale_id"),))))
 
 
 @app.get("/lead-moi", response_class=HTMLResponse)
@@ -323,27 +337,43 @@ async def lead_moi(request: Request):
         v, loi = _gia_tri_lead(form, nguoi, None)
         if loi:
             return _ve_form_lead(request, conn, nguoi, v, loi, status_code=400)
-        trung = [] if v["nguon"] == q.NGUON_EM_NHO else logic.lead_trung(conn, v["sdt"])
+        trung = _trung_can_bao(conn, v)
         bay_gio = dongho.ghi_gio(dongho.bay_gio())
         cot = list(v) + ["ngay_nhan", "tao_boi", "tao_luc"]
         cur = conn.execute(f"INSERT INTO lead ({', '.join(cot)}) VALUES ({', '.join('?' * len(cot))})",
                            [*v.values(), bay_gio, nguoi["id"], bay_gio])
         conn.commit()
         if trung:
-            _bao_trung(conn, v, trung)
+            await run_in_threadpool(_bao_trung, v, trung)
         return _ve_lai(f"/lead/{cur.lastrowid}")
     finally:
         conn.close()
 
 
-def _bao_trung(conn: sqlite3.Connection, v: dict, trung: list[sqlite3.Row]) -> None:
-    ten_sale = {x["id"]: x["ten"] for x in conn.execute("SELECT id, ten FROM nguoi_dung")}
+def _trung_can_bao(conn: sqlite3.Connection, v: dict, tru_id: int | None = None) -> list[sqlite3.Row]:
+    """Lead khác cùng SĐT cần báo chủ. Lead em (nguồn Em nhỏ trong gia đình) chỉ bỏ qua lead cùng sale:
+    lead của anh/chị tạo bằng nút Tạo lead cho em luôn cùng sale; trùng với lead của sale khác vẫn báo."""
+    trung = logic.lead_trung(conn, v["sdt"], tru_id=tru_id)
+    if v["nguon"] == q.NGUON_EM_NHO:
+        trung = [r for r in trung if r["sale_id"] != v["sale_id"]]
+    return trung
+
+
+def _bao_trung(v: dict, trung: list[sqlite3.Row]) -> None:
+    """Báo chủ qua Telegram. Chạy ngoài vòng sự kiện (gọi mạng có thể chậm tới 15 giây)."""
+    conn = _conn()
+    try:
+        ten_sale = {x["id"]: x["ten"] for x in conn.execute("SELECT id, ten FROM nguoi_dung")}
+        chu = [r["telegram_chat_id"] or "" for r in
+               conn.execute("SELECT telegram_chat_id FROM nguoi_dung WHERE vai_tro = 'chu' AND dang_lam = 1")]
+    finally:
+        conn.close()
     tin = [f"Lead trùng SĐT: {v['ten_ph']} (sale {ten_sale.get(v['sale_id'], 'chưa giao')}) vừa được thêm, "
            f"trùng số với:"]
     tin += [f"- {r['ten_ph']} · sale {r['ten_sale'] or 'chưa giao'} · {r['co_so'] or 'chưa rõ cơ sở'}" for r in trung]
     tin.append("Mở app, mục Tất cả lead, để gộp hoặc giao lại.")
-    for chu in conn.execute("SELECT telegram_chat_id FROM nguoi_dung WHERE vai_tro = 'chu' AND dang_lam = 1"):
-        telegram.gui_tin(chu["telegram_chat_id"] or "", "\n".join(tin))
+    for chat in chu:
+        telegram.gui_tin(chat, "\n".join(tin))
 
 
 @app.get("/lead/{lead_id}/sua", response_class=HTMLResponse)
@@ -371,8 +401,12 @@ async def sua_lead(request: Request, lead_id: int):
         v, loi = _gia_tri_lead(form, nguoi, cu)
         if loi:
             return _ve_form_lead(request, conn, nguoi, v, loi, lead_id=lead_id, status_code=400)
+        trung = (_trung_can_bao(conn, v, tru_id=lead_id)
+                 if logic.chu_so(v["sdt"]) != logic.chu_so(cu["sdt"]) else [])
         conn.execute(f"UPDATE lead SET {', '.join(k + ' = ?' for k in v)} WHERE id = ?", [*v.values(), lead_id])
         conn.commit()
+        if trung:
+            await run_in_threadpool(_bao_trung, v, trung)
         return _ve_lai(f"/lead/{lead_id}")
     finally:
         conn.close()
@@ -385,10 +419,10 @@ def _gia_tri_cham_soc(form) -> tuple[dict, list[str]]:
                                          "ly_do_tu_choi", "hen_lai_sau")}
     v["ph_chu_dong"] = 1 if form.get("ph_chu_dong") else 0
     v["da_gui_thu_moi"] = 1 if form.get("da_gui_thu_moi") else 0
-    v["ngay_hen_goi_lai"] = _ngay_nhap(form, "ngay_hen_goi_lai")
-    v["ngay_hen_tham_quan"] = _ngay_nhap(form, "ngay_hen_tham_quan")
-    v["ngay_nhap_hoc"] = _ngay_nhap(form, "ngay_nhap_hoc")
     tt, loi = v["tinh_trang"], []
+    v["ngay_hen_goi_lai"] = _ngay_nhap(form, "ngay_hen_goi_lai", loi, "Ngày hẹn gọi lại")
+    v["ngay_hen_tham_quan"] = _ngay_nhap(form, "ngay_hen_tham_quan", loi, "Ngày hẹn tham quan")
+    v["ngay_nhap_hoc"] = _ngay_nhap(form, "ngay_nhap_hoc", loi, "Ngày nhập học dự kiến")
     if v["phuong_thuc"] not in db.PHUONG_THUC:
         loi.append("Chọn phương thức liên hệ.")
     if tt not in q.TINH_TRANG:
@@ -408,12 +442,12 @@ def _gia_tri_cham_soc(form) -> tuple[dict, list[str]]:
     if tt == q.GOI_LAI and not v["hen_lai_sau"]:
         loi.append("Phụ huynh hẹn gọi lại: chọn Hẹn lại sau.")
     if v["hen_lai_sau"] == q.HEN_CHON_NGAY:
-        if not v["ngay_hen_goi_lai"]:
+        if not v["ngay_hen_goi_lai"] and not _chu_nhan(form, "ngay_hen_goi_lai"):
             loi.append("Chọn ngày hẹn gọi lại.")
     else:
         v["ngay_hen_goi_lai"] = None
     if tt == q.DA_HEN:
-        if not v["ngay_hen_tham_quan"]:
+        if not v["ngay_hen_tham_quan"] and not _chu_nhan(form, "ngay_hen_tham_quan"):
             loi.append("Chọn ngày hẹn tham quan.")
     else:
         v["ngay_hen_tham_quan"] = None
@@ -569,13 +603,21 @@ async def noi_telegram(request: Request):
         conn.close()
 
 
+def _doc_telegram() -> None:
+    conn = _conn()
+    try:
+        telegram.xu_ly_cap_nhat(conn)
+    finally:
+        conn.close()
+
+
 @app.post("/tai-khoan/telegram/kiem-tra")
 async def kiem_tra_telegram(request: Request):
     await _bieu_mau(request)
     conn = _conn()
     try:
         nguoi = _nguoi(request, conn)
-        telegram.xu_ly_cap_nhat(conn)
+        await run_in_threadpool(_doc_telegram)
         r = conn.execute("SELECT telegram_chat_id FROM nguoi_dung WHERE id = ?", (nguoi["id"],)).fetchone()
         tb = ("Đã nối Telegram." if r["telegram_chat_id"] else
               "Chưa thấy tin của bạn. Mở đường link, bấm Bắt đầu (Start) trong Telegram rồi bấm kiểm tra lại.")
