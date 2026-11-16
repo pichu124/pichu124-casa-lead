@@ -10,7 +10,7 @@ Máy: VPS InterData đặt tại Việt Nam, IP `103.195.238.114`, Ubuntu 24.04,
 | Cổng (chỉ trong máy) | 3000 | 8100 |
 | Tên miền | `casa-school.duckdns.org` | `casa-lead.duckdns.org` (tạm, miễn phí) |
 
-Chỗ chung duy nhất là tệp `/etc/caddy/Caddyfile`: chỉ **thêm** một khối, không sửa khối của app kia.
+Chỗ chung duy nhất là Caddy. Tệp `/etc/caddy/Caddyfile` có dòng `import /etc/caddy/sites/*.caddy`, nên app này có **tệp riêng** `/etc/caddy/sites/casa-lead.caddy`; không sửa tệp chính, không đụng `casa-website.caddy`.
 
 **Cách làm:** đăng nhập máy bằng `ssh casa@103.195.238.114`, rồi **dán từng dòng một**, chờ dấu nhắc hiện lại rồi mới dán dòng tiếp. Dán cả khối một lúc dễ hỏng mà không báo lỗi.
 
@@ -111,47 +111,102 @@ UNIT
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable --now casa-lead
-curl -s http://127.0.0.1:8100/healthz
+curl -s http://127.0.0.1:8100/healthz; echo
 ```
 
 Dòng cuối phải in `ok`. Không ra thì xem lỗi: `sudo journalctl -u casa-lead -n 50`.
 
 ## 4. HTTPS qua Caddy
 
-Thêm một khối vào cuối tệp (không sửa khối `casa-school` đang có):
+Kiểm tra tên miền đã trỏ đúng máy (phải in `103.195.238.114  casa-lead.duckdns.org`):
 
 ```bash
-sudo cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.truoc-casa-lead
-printf '\ncasa-lead.duckdns.org {\n    encode zstd gzip\n    reverse_proxy 127.0.0.1:8100\n}\n' | sudo tee -a /etc/caddy/Caddyfile
+getent hosts casa-lead.duckdns.org
+```
+
+Tạo tệp riêng cho app, từng dòng một (dòng dài dán vào dễ bị ngắt):
+
+```bash
+echo 'casa-lead.duckdns.org {' | sudo tee /etc/caddy/sites/casa-lead.caddy
+echo '    encode zstd gzip' | sudo tee -a /etc/caddy/sites/casa-lead.caddy
+echo '    reverse_proxy 127.0.0.1:8100' | sudo tee -a /etc/caddy/sites/casa-lead.caddy
+echo '}' | sudo tee -a /etc/caddy/sites/casa-lead.caddy
 sudo caddy validate --config /etc/caddy/Caddyfile
+```
+
+Chỉ khi thấy `Valid configuration` mới nạp lại:
+
+```bash
 sudo systemctl reload caddy
-curl -I https://casa-lead.duckdns.org/healthz
+curl -s https://casa-lead.duckdns.org/healthz; echo
+curl -sI https://casa-school.duckdns.org | head -1
 ```
 
-`caddy validate` phải báo `Valid configuration`; dòng cuối phải có `HTTP/2 200` (lần đầu có thể chờ 1 phút để Caddy xin chứng chỉ). Kiểm luôn app kia vẫn chạy: `curl -I https://casa-school.duckdns.org/healthz`.
+Dòng đầu phải in `ok` (lần đầu chờ khoảng 1 phút để Caddy xin chứng chỉ); dòng sau kiểm app CASA Mầm non vẫn chạy.
 
-Lỡ hỏng Caddy: `sudo cp /etc/caddy/Caddyfile.truoc-casa-lead /etc/caddy/Caddyfile && sudo systemctl reload caddy`.
+Lỡ hỏng: `sudo rm /etc/caddy/sites/casa-lead.caddy && sudo systemctl reload caddy`.
 
-## 5. Lịch chạy hằng ngày
+## 5. Sao lưu ra Google Drive (mã hoá) và lịch chạy hằng ngày
+
+Bản sao lưu trong `/var/lib/casa-lead/backups` nằm cùng ổ với dữ liệu gốc. Mỗi đêm máy đẩy thêm một bản **đã mã hoá** lên Google Drive của trường bằng `rclone`; Google và người mở Drive chỉ thấy tệp tên lạ.
+
+**5a. Nối Google Drive** (`rclone config` trên VPS, đăng nhập Google trên một máy có trình duyệt):
 
 ```bash
-crontab -e
+sudo apt-get install -y rclone
+rclone config
 ```
 
-Thêm hai dòng ở cuối (giữ nguyên dòng sao lưu 02:00 của CASA Mầm non):
-
-```
-15 2 * * * cd /opt/casa-lead && CASA_LEAD_DATA=/var/lib/casa-lead .venv/bin/python scripts/sao_luu.py >> /home/casa/sao-luu-lead.log 2>&1
-0 8 * * 1-5 cd /opt/casa-lead && set -a && . /etc/casa-lead.env && set +a && .venv/bin/python -m app.nhac_sang >> /home/casa/nhac-sang.log 2>&1
-```
-
-Dòng 1: sao lưu 02:15 mỗi đêm. Dòng 2: tin nhắc 8:00 thứ 2 – thứ 6 (app tự bỏ ngày lễ trong mục Ngày nghỉ). Thử tin nhắc mà không gửi:
+Trả lời: `n` → name `gdrive` → Storage `drive` → client_id, client_secret để trống → scope `3` (`drive.file`: rclone chỉ thấy tệp nó tạo) → service_account_file trống → advanced `n` → auto config **`n`**. Máy in lệnh `rclone authorize "drive" "…"`: chạy lệnh đó trên laptop (Windows: tải rclone ở rclone.org/downloads, giải nén, `.\rclone.exe authorize …`), đăng nhập Gmail của trường, cho phép, chép đoạn giữa `--->` và `<---End paste` dán vào VPS (đoạn này là chìa khoá Drive, không gửi ai, không cần lưu). Shared Drive `n` → `y` → `q`.
 
 ```bash
-cd /opt/casa-lead && set -a && . /etc/casa-lead.env && set +a && .venv/bin/python -m app.nhac_sang --thu
+rclone mkdir gdrive:casa-sao-luu
+rclone lsd gdrive:
 ```
 
-**Bản sao lưu đang cùng ổ đĩa với dữ liệu gốc.** Trước khi nhập dữ liệu thật, phải có thêm một bản ra ngoài máy (cùng việc còn thiếu của CASA Mầm non): dùng `scripts/sao_luu.py --ra <thư mục>` với thư mục đồng bộ ra ngoài.
+**5b. Lớp mã hoá** (`rclone config` lần nữa): `n` → name `mahoa` → Storage `crypt` → remote `gdrive:casa-sao-luu` → hai câu tiếp Enter → mật khẩu `g`, Bits Enter.
+
+> **Mật khẩu mã hoá phải lưu ở ít nhất hai nơi ngoài VPS** (trình quản lý mật khẩu, giấy trong két). Mất nó thì mọi bản trên Drive không mở được. Không gửi qua chat.
+
+Rồi `y` → mật khẩu thứ hai (salt) `n` → advanced `n` → `y` → `q`. Thử:
+
+```bash
+echo "thu" > /tmp/thu.txt && rclone copy /tmp/thu.txt mahoa: && rclone cat mahoa:thu.txt
+rclone ls gdrive:casa-sao-luu
+rclone delete mahoa:thu.txt && rm /tmp/thu.txt
+```
+
+Qua `mahoa:` đọc được `thu`; trên `gdrive:` chỉ thấy tên đã mã hoá.
+
+**5c. Lịch chạy** (giữ nguyên dòng sao lưu 02:00 của CASA Mầm non). Dán từng lệnh, mỗi lệnh một dòng:
+
+```bash
+crontab -l > ~/crontab-truoc-casa-lead.txt
+(crontab -l; echo '15 2 * * * cd /opt/casa-lead && CASA_LEAD_DATA=/var/lib/casa-lead .venv/bin/python scripts/sao_luu.py >> /home/casa/sao-luu-lead.log 2>&1 && rclone copy /var/lib/casa-lead/backups mahoa:casa-lead >> /home/casa/sao-luu-lead.log 2>&1') | crontab -
+(crontab -l; echo '0 8 * * 1-5 cd /opt/casa-lead && set -a && . /etc/casa-lead.env && set +a && .venv/bin/python -m app.nhac_sang >> /home/casa/nhac-sang.log 2>&1') | crontab -
+crontab -l
+```
+
+Dòng 1: 02:15 mỗi đêm sao lưu, kiểm tra bản sao, dọn bản cũ (giữ mọi bản 2 ngày, mỗi ngày một bản trong 14 ngày, mỗi tháng một bản trong 12 tháng), rồi đẩy lên Drive. `rclone copy` chỉ thêm, **không bao giờ xoá trên Drive**: VPS bị phá thì bản trên Drive vẫn còn. Dòng 2: tin nhắc 8:00 thứ 2 – thứ 6 (app tự bỏ ngày lễ trong mục Ngày nghỉ).
+
+Chạy thử ngay:
+
+```bash
+cd /opt/casa-lead && CASA_LEAD_DATA=/var/lib/casa-lead .venv/bin/python scripts/sao_luu.py && rclone copy /var/lib/casa-lead/backups mahoa:casa-lead
+rclone ls mahoa:casa-lead
+set -a && . /etc/casa-lead.env && set +a && .venv/bin/python -m app.nhac_sang --thu
+```
+
+**Lấy lại dữ liệu từ Drive** (VPS mới hoặc máy khác): cài rclone, tạo lại `gdrive` và `mahoa` như trên với **đúng mật khẩu đã lưu** (mật khẩu thứ hai vẫn để trống), rồi:
+
+```bash
+rclone ls mahoa:casa-lead
+rclone copy mahoa:casa-lead/<tên bản muốn lấy> /tmp/khoi-phuc/
+sudo systemctl stop casa-lead
+mv /var/lib/casa-lead/casa-lead.db /var/lib/casa-lead/casa-lead.db.cu 2>/dev/null; rm -f /var/lib/casa-lead/casa-lead.db-wal /var/lib/casa-lead/casa-lead.db-shm
+cp /tmp/khoi-phuc/<tên bản> /var/lib/casa-lead/casa-lead.db && chmod 600 /var/lib/casa-lead/casa-lead.db
+sudo systemctl start casa-lead
+```
 
 ## 6. Dùng thử
 

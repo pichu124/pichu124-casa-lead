@@ -141,7 +141,7 @@ def _ngay_nhap(form, ten: str, loi: list[str] | None = None, nhan: str = "Ngày"
 
 # ------------------------------------------------------------------ đăng nhập
 
-@app.get("/healthz")
+@app.api_route("/healthz", methods=["GET", "HEAD"])
 def healthz():
     conn = _conn()
     try:

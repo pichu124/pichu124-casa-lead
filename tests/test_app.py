@@ -353,3 +353,7 @@ def test_ngay_sinh_em_sai_o_bi_an_khong_chan_luu_lead(du_lieu):
 
 def test_an_sdt_dau_tru_toan_hoc():
     assert "345" not in telegram.an_sdt("0912\u2212345\u2212678")
+
+
+def test_healthz_nhan_ca_head(du_lieu):
+    assert TestClient(app).head("/healthz").status_code == 200  # curl -I, dịch vụ theo dõi dùng HEAD
