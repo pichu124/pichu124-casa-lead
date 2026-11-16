@@ -29,21 +29,21 @@ python3 --version
 
 Dòng cuối phải in `Python 3.12` trở lên.
 
-Kho mã `pichu124/casa-lead` để riêng tư, nên máy cần một **khoá chỉ đọc** (deploy key):
+Kho mã là `pichu124/pichu124-casa-lead`. Máy dùng một **khoá chỉ đọc** (deploy key) để kéo mã, nên vẫn chạy được nếu sau này chuyển kho sang riêng tư:
 
 ```bash
 ssh-keygen -t ed25519 -N "" -f ~/.ssh/casa-lead-deploy -C "vps casa-lead"
 cat ~/.ssh/casa-lead-deploy.pub
 ```
 
-Chép dòng in ra. Trên GitHub mở kho `casa-lead` → **Settings → Deploy keys → Add deploy key**, dán vào, **không** tick "Allow write access", bấm **Add key**. Rồi trên VPS:
+Chép dòng in ra. Trên GitHub mở kho `pichu124-casa-lead` → **Settings → Deploy keys → Add deploy key**, dán vào, **không** tick "Allow write access", bấm **Add key**. Rồi trên VPS:
 
 ```bash
 printf 'Host github-casa-lead\n  HostName github.com\n  User git\n  IdentityFile ~/.ssh/casa-lead-deploy\n  IdentitiesOnly yes\n' >> ~/.ssh/config
 sudo mkdir -p /opt/casa-lead /var/lib/casa-lead
 sudo chown casa:casa /opt/casa-lead /var/lib/casa-lead
 chmod 700 /var/lib/casa-lead
-git clone git@github-casa-lead:pichu124/casa-lead.git /opt/casa-lead
+git clone git@github-casa-lead:pichu124/pichu124-casa-lead.git /opt/casa-lead
 cd /opt/casa-lead
 python3 -m venv .venv
 .venv/bin/pip install -r requirements-dev.txt
