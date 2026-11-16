@@ -184,10 +184,11 @@ Qua `mahoa:` đọc được `thu`; trên `gdrive:` chỉ thấy tên đã mã h
 crontab -l > ~/crontab-truoc-casa-lead.txt
 (crontab -l; echo '15 2 * * * cd /opt/casa-lead && CASA_LEAD_DATA=/var/lib/casa-lead .venv/bin/python scripts/sao_luu.py >> /home/casa/sao-luu-lead.log 2>&1 && rclone copy /var/lib/casa-lead/backups mahoa:casa-lead >> /home/casa/sao-luu-lead.log 2>&1') | crontab -
 (crontab -l; echo '0 8 * * 1-5 cd /opt/casa-lead && set -a && . /etc/casa-lead.env && set +a && .venv/bin/python -m app.nhac_sang >> /home/casa/nhac-sang.log 2>&1') | crontab -
+(crontab -l; echo '*/5 7-21 * * * cd /opt/casa-lead && set -a && . /etc/casa-lead.env && set +a && .venv/bin/python -m app.dong_bo_messenger >> /home/casa/messenger.log 2>&1') | crontab -
 crontab -l
 ```
 
-Dòng 1: 02:15 mỗi đêm sao lưu, kiểm tra bản sao, dọn bản cũ (giữ mọi bản 2 ngày, mỗi ngày một bản trong 14 ngày, mỗi tháng một bản trong 12 tháng), rồi đẩy lên Drive. `rclone copy` chỉ thêm, **không bao giờ xoá trên Drive**: VPS bị phá thì bản trên Drive vẫn còn. Dòng 2: tin nhắc 8:00 thứ 2 – thứ 6 (app tự bỏ ngày lễ trong mục Ngày nghỉ).
+Dòng 1: 02:15 mỗi đêm sao lưu, kiểm tra bản sao, dọn bản cũ (giữ mọi bản 2 ngày, mỗi ngày một bản trong 14 ngày, mỗi tháng một bản trong 12 tháng), rồi đẩy lên Drive. `rclone copy` chỉ thêm, **không bao giờ xoá trên Drive**: VPS bị phá thì bản trên Drive vẫn còn. Dòng 2: tin nhắc 8:00 thứ 2 – thứ 6 (app tự bỏ ngày lễ trong mục Ngày nghỉ). Dòng 3: mỗi 5 phút từ 7:00 tới 21:55, mọi ngày, lấy tab Leads của bot Messenger về app và báo vào nhóm Telegram (chưa nối nhóm thì báo riêng cho chủ) khi có phụ huynh mới để SĐT chờ giao sale; mỗi người báo một lần, lần chạy đầu chỉ ghi nhớ.
 
 Chạy thử ngay:
 
