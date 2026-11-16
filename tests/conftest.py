@@ -10,8 +10,10 @@ import pytest
 GOC = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(GOC))
 # Test luôn chạy cách ly, kể cả khi shell đang mang cấu hình máy thật (vd sau `. /etc/casa-lead.env`):
-# không dùng thư mục dữ liệu thật, không bật chế độ production (cookie chỉ qua HTTPS), không cầm token Telegram thật.
-for _bien in ("CASA_LEAD_ENV", "CASA_LEAD_SECRET", "CASA_LEAD_URL", "TELEGRAM_BOT_TOKEN", "TELEGRAM_BOT_USERNAME"):
+# không dùng thư mục dữ liệu thật, không bật chế độ production (cookie chỉ qua HTTPS), không cầm token Telegram thật,
+# không gọi Sheet thật của bot (dữ liệu phụ huynh thật không được vào test).
+for _bien in ("CASA_LEAD_ENV", "CASA_LEAD_SECRET", "CASA_LEAD_URL", "TELEGRAM_BOT_TOKEN", "TELEGRAM_BOT_USERNAME",
+              "LEADS_SHEET_WEBHOOK_URL", "LEADS_READ_TOKEN"):
     os.environ.pop(_bien, None)
 os.environ["CASA_LEAD_DATA"] = tempfile.mkdtemp(prefix="casa-lead-test-")
 

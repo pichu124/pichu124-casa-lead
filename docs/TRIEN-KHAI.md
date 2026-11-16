@@ -225,7 +225,7 @@ App đọc tab `Leads` qua chính web app Apps Script mà bot dùng để ghi, b
 
 3. `sudo systemctl restart casa-lead`, mở **Quản trị → Messenger chưa nhận**: phải thấy các phụ huynh đã để SĐT cho bot. Lỗi thì màn hình in lý do (sai token, script cũ…).
 
-App lấy lại tab Leads mỗi khi chủ mở màn này (cách nhau ít nhất 1 phút) và trước tin nhắc 8:00. Không ghi gì vào Sheet.
+App lấy lại tab Leads mỗi 5 phút từ 7:00 tới 21:55 (cron `app.dong_bo_messenger`, mục 5c, kèm tin báo phụ huynh mới chờ giao), mỗi khi chủ mở màn này (cách nhau ít nhất 1 phút) và trước tin nhắc 8:00. Không ghi gì vào Sheet.
 
 ## 6. Dùng thử
 
