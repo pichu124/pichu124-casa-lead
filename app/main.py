@@ -272,9 +272,10 @@ def chi_tiet(request: Request, lead_id: int):
 # ------------------------------------------------------------------ thêm / sửa lead
 
 def _gia_tri_lead(form, nguoi: sqlite3.Row, cu: sqlite3.Row | None) -> tuple[dict, list[str]]:
-    v = {k: _chu_nhan(form, k) for k in ("ten_ph", "sdt", "ten_be", "tuoi_be", "co_so", "nguon", "chien_dich",
+    v = {k: _chu_nhan(form, k) for k in ("ten_ph", "sdt", "ten_be", "tuoi_be", "nguon", "chien_dich",
                                          "chat_luong", "ly_do_chat_luong", "ghi_chu", "em_nho")}
     v["ph_quan_tam"] = ", ".join(x for x in form.getlist("ph_quan_tam") if x)
+    v["co_so"] = _co_so_nhap(form.getlist("co_so"))
     loi: list[str] = []
     v["ngay_sinh_be"] = _ngay_nhap(form, "ngay_sinh_be", loi, "Ngày sinh bé")
     loi_em: list[str] = []  # chỉ báo khi ô ngày sinh em đang hiện (Có em nhỏ / Sắp sinh em)
@@ -301,6 +302,17 @@ def _gia_tri_lead(form, nguoi: sqlite3.Row, cu: sqlite3.Row | None) -> tuple[dic
         v["sale_id"] = cu["sale_id"] if cu else nguoi["id"]
         v["tam_dung"] = cu["tam_dung"] if cu else 0
     return v, loi
+
+
+def _co_so_nhap(chon: list[str]) -> str:
+    """Các cơ sở đã tích, theo thứ tự danh mục (giá trị lạ, vd cơ sở đã bỏ khỏi danh mục, xếp cuối). Không tích: rỗng."""
+    chon = list(dict.fromkeys(x.strip() for x in chon if x and x.strip() and "," not in x))
+    conn = _conn()
+    try:
+        thu_tu = {c: i for i, c in enumerate(db.danh_muc(conn, "Cơ sở"))}
+    finally:
+        conn.close()
+    return ", ".join(sorted(chon, key=lambda c: thu_tu.get(c, len(thu_tu))))
 
 
 def _ve_form_lead(request, conn, nguoi, v, loi, lead_id=None, status_code=200):

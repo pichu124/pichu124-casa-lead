@@ -138,6 +138,11 @@ def tinh(conn: sqlite3.Connection, leads: list[sqlite3.Row], hom_nay: date | Non
     return kq
 
 
+def cac_co_so(s: str | None) -> list[str]:
+    """"Chùa Láng, Kim Mã" → ["Chùa Láng", "Kim Mã"]. Lead có thể quan tâm nhiều cơ sở, hoặc chưa rõ (rỗng)."""
+    return [x.strip() for x in (s or "").split(",") if x.strip()]
+
+
 def lead_cua(conn: sqlite3.Connection, nguoi: sqlite3.Row, sale_id: int | None = None,
              co_so: str = "") -> list[sqlite3.Row]:
     """Lead người này được thấy: sale chỉ thấy lead mình phụ trách, chủ thấy tất cả (lọc được)."""
@@ -150,9 +155,9 @@ def lead_cua(conn: sqlite3.Connection, nguoi: sqlite3.Row, sale_id: int | None =
     elif sale_id:
         sql += " AND lead.sale_id = ?"
         tham.append(sale_id)
-    if co_so:
-        sql += " AND lead.co_so = ?"
-        tham.append(co_so)
+    if co_so:  # lead quan tâm nhiều cơ sở thì có mặt ở mỗi cơ sở đó
+        sql += " AND (', ' || lead.co_so || ', ') LIKE ?"
+        tham.append(f"%, {co_so}, %")
     return list(conn.execute(sql + " ORDER BY lead.ngay_nhan DESC, lead.id DESC", tham))
 
 

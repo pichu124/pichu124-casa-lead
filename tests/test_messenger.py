@@ -111,7 +111,8 @@ def test_giao_lead_dien_san_roi_bien_khoi_danh_sach(sheet):
     for chu in ('value="Mai Thử"', 'value="0911000001"', 'value="Bé Bơ"', 'value="3 tuổi"', 'value="QC Cambridge T11"',
                 'name="customer_id" value="1001"', "Cầu Giấy", "Cho chị xin học phí"):
         assert chu in form, chu
-    assert re.search(r"<option selected>Mỹ Đình</option>", form)  # "Cơ sở Mỹ Đình - hệ song ngữ" → Mỹ Đình
+    assert re.search(r'name="co_so" value="Mỹ Đình" checked', form)  # "Cơ sở Mỹ Đình - hệ song ngữ" → Mỹ Đình
+    assert not re.search(r'name="co_so" value="Kim Mã" checked', form)
     assert re.search(r"<option selected>Facebook Messenger</option>", form)
     conn = db.ket_noi()
     sale2 = conn.execute("SELECT id FROM nguoi_dung WHERE ten_dang_nhap = 'sale2'").fetchone()[0]

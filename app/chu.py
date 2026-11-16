@@ -289,8 +289,10 @@ def bao_cao(request: Request, thang: str = "", co_so: str = q.TAT_CA):
         if len(thang) != 7 or thang[4] != "-" or not (thang[:4] + thang[5:]).isdigit():
             thang = dongho.hom_nay().strftime("%Y-%m")
         ho_so, cs = _hang_bao_cao(conn)
-        dem = q.thong_ke_thang(ho_so, cs, thang, co_so)
-        truoc = q.thong_ke_thang(ho_so, cs, _thang_truoc(thang), co_so)
+        if co_so != q.TAT_CA:  # lead quan tâm nhiều cơ sở được đếm ở mỗi cơ sở đó
+            ho_so = [h for h in ho_so if co_so in logic.cac_co_so(h["Cơ sở"])]
+        dem = q.thong_ke_thang(ho_so, cs, thang, q.TAT_CA)
+        truoc = q.thong_ke_thang(ho_so, cs, _thang_truoc(thang), q.TAT_CA)
         buoc, moi = [], dem[q.BUOC_PHEU[0]]
         for i, b in enumerate(q.BUOC_PHEU):
             tren = dem[q.BUOC_PHEU[i - 1]] if i else None

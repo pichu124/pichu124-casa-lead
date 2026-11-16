@@ -161,10 +161,9 @@ def _khong_dau(s: str) -> str:
 
 
 def doan_co_so(chu: str, ds_co_so: list[str]) -> str:
-    """"Cơ sở Mỹ Đình - hệ song ngữ" → "Mỹ Đình" (nếu đúng một cơ sở trong danh mục khớp)."""
+    """"Cơ sở Mỹ Đình - hệ song ngữ" → "Mỹ Đình"; nhắc nhiều cơ sở thì lấy hết, theo thứ tự danh mục."""
     t = _khong_dau(chu)
-    khop = [c for c in ds_co_so if _khong_dau(c) in t]
-    return khop[0] if len(khop) == 1 else ""
+    return ", ".join(c for c in ds_co_so if _khong_dau(c) in t)
 
 
 def dien_san(h: dict, ds_co_so: list[str], ds_nguon: list[str]) -> dict:

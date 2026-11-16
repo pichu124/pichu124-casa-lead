@@ -14,10 +14,11 @@
   <label>Tuổi bé <input name="tuoi_be" value="{{ v.tuoi_be or '' }}" placeholder="vd 18 tháng, 2 tuổi rưỡi, sinh năm 2022"></label>
   <label>Ngày sinh bé <input name="ngay_sinh_be" type="date" value="{{ v.ngay_sinh_be or '' }}">
     <span class="nho">Điền khi phụ huynh cho ngày sinh. Để trống thì app ước tính từ Tuổi bé.</span></label>
-  <label>Cơ sở
-    <select name="co_so"><option value="">—</option>
-      {% for c in ds_co_so %}<option {{ 'selected' if c == v.co_so }}>{{ c }}</option>{% endfor %}
-      {% if v.co_so and v.co_so not in ds_co_so %}<option value="{{ v.co_so }}" selected>{{ v.co_so }} (đã bỏ)</option>{% endif %}</select></label>
+  <fieldset><legend>Cơ sở quan tâm <span class="nho">(chọn được nhiều; chưa rõ thì để trống)</span></legend>
+    {% set co_so_chon = (v.co_so or '').split(', ') %}
+    {% for c in ds_co_so %}<label class="chon"><input type="checkbox" name="co_so" value="{{ c }}" {{ 'checked' if c in co_so_chon }}> {{ c }}</label>{% endfor %}
+    {% for c in co_so_chon if c and c not in ds_co_so %}<label class="chon"><input type="checkbox" name="co_so" value="{{ c }}" checked> {{ c }} (đã bỏ)</label>{% endfor %}
+  </fieldset>
   <label>Nguồn
     <select name="nguon"><option value="">—</option>
       {% for c in ds_nguon %}<option {{ 'selected' if c == v.nguon }}>{{ c }}</option>{% endfor %}
