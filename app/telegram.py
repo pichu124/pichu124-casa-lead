@@ -109,6 +109,35 @@ def tao_ma_noi(conn: sqlite3.Connection, nguoi_id: int) -> str:
     return ma
 
 
+def tao_ma_nhom(conn: sqlite3.Connection) -> str:
+    """Mã để nối nhóm Telegram nhận tin nhắc sáng. Đã có mã chưa dùng thì giữ nguyên."""
+    ma = lay_he_thong(conn, "telegram_nhom_ma")
+    if not ma:
+        ma = secrets.token_hex(8)
+        dat_he_thong(conn, "telegram_nhom_ma", ma)
+        conn.commit()
+    return ma
+
+
+def _xu_ly_nhom(conn: sqlite3.Connection, m: dict, chat: str, chu: str) -> bool:
+    """Tin trong nhóm: chỉ quan tâm lệnh /noi <mã> (hoặc /start <mã>) và việc nhóm đổi mã khi lên supergroup.
+    Mọi tin khác trong nhóm: im lặng. Trả về True khi vừa nối nhóm."""
+    moi = m.get("migrate_to_chat_id")
+    if moi and chat == lay_he_thong(conn, "telegram_nhom"):
+        dat_he_thong(conn, "telegram_nhom", str(moi))
+        return False
+    lenh = re.fullmatch(r"/(?:noi|start)(?:@\w+)?\s+([0-9a-f]{16})", chu)
+    ma = lay_he_thong(conn, "telegram_nhom_ma")
+    if not lenh or not ma or lenh.group(1) != ma:
+        return False
+    dat_he_thong(conn, "telegram_nhom", chat)
+    dat_he_thong(conn, "telegram_nhom_ten", (m.get("chat") or {}).get("title") or "")
+    dat_he_thong(conn, "telegram_nhom_ma", "")
+    gui_tin(chat, "Đã nối nhóm này với app Casa chăm sóc lead. Mỗi sáng ngày làm việc lúc 8:00 nhóm nhận danh "
+                  "sách phụ huynh cần liên hệ của từng sale.")
+    return True
+
+
 HUONG_DAN = ("Chào bạn. Để nhận tin nhắc, mở app Casa chăm sóc lead → Tài khoản → Nối Telegram, "
              "rồi bấm đường link trên màn hình (hoặc gửi cho bot mã 16 ký tự hiện trên màn hình).")
 
@@ -122,7 +151,10 @@ def xu_ly_cap_nhat(conn: sqlite3.Connection, cap_nhat: list[dict] | None = None)
         chat_obj = m.get("chat") or {}
         chat = str(chat_obj.get("id", ""))
         chu = (m.get("text") or "").strip()
-        if not chat or not chu or chat_obj.get("type", "private") != "private":
+        if chat and chat_obj.get("type", "private") != "private":
+            _xu_ly_nhom(conn, m, chat, chu)
+            continue
+        if not chat or not chu:
             continue
         # "/start <mã>" từ đường link, hoặc người dùng tự gửi mã
         ma = chu.split(maxsplit=1)[1].strip() if chu.startswith("/start ") else chu

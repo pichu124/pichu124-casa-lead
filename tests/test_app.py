@@ -202,7 +202,8 @@ def test_tin_sang_cua_sale_khong_co_sdt(du_lieu):
     conn = db.ket_noi()
     ds = dict(nhac_sang.chay(conn, date(2026, 11, 4), thu=True))
     tin = ds["sale3"]
-    assert "Lan Thử" in tin and "Quá hạn: Xác nhận lịch tham quan" in tin and "Quang Thử" in tin
+    assert "Lan Thử" in tin and "Quang Thử" in tin
+    assert re.search(r"Lan Thử \(bé [^)]+\), quá hạn \d+ ngày: Xác nhận lịch tham quan", tin)
     assert "Hoa Thử" not in tin  # lead của sale khác
     for t in ds.values():
         assert "090000" not in t

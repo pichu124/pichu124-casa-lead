@@ -5,6 +5,30 @@
 <h1>Cài đặt</h1>
 {% if tb %}<p class="thong-bao">{{ tb }}</p>{% endif %}
 <section class="hop">
+  <h2>Nhóm Telegram nhận tin nhắc sáng</h2>
+  {% if nhom %}
+  <p>Đang gửi vào nhóm <strong>{{ nhom_ten or nhom }}</strong>: mỗi sáng 8:00 một tin gồm việc của từng sale và lead bỏ quên.
+    Tin riêng buổi sáng không gửi nữa (nhắc sale, giao lead, lead trùng vẫn gửi riêng).</p>
+  <form method="post" action="/chu/cai-dat" onsubmit="return confirm('Gỡ nhóm? Tin nhắc sáng sẽ quay lại gửi riêng cho từng người.')">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="viec" value="go_nhom"><button>Gỡ nhóm</button></form>
+  {% elif not tg_cau_hinh %}
+  <p class="nho">App chưa cấu hình bot Telegram.</p>
+  {% elif nhom_ma %}
+  <ol>
+    <li>Trong Telegram, thêm bot <strong>@{{ ten_bot() }}</strong> vào nhóm (Thêm thành viên).</li>
+    <li>Trong nhóm, gửi đúng dòng này: <code>/noi@{{ ten_bot() }} {{ nhom_ma }}</code></li>
+    <li>Quay lại đây bấm nút dưới. Bot trả lời "Đã nối nhóm…" trong nhóm là xong.</li>
+  </ol>
+  <form method="post" action="/chu/cai-dat"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="viec" value="kiem_tra_nhom"><button class="chinh">Tôi đã gửi lệnh trong nhóm</button></form>
+  {% else %}
+  <p>Chưa nối nhóm: mỗi người nhận tin nhắc sáng riêng. Nối nhóm thì cả danh sách gửi vào một nhóm.</p>
+  <form method="post" action="/chu/cai-dat"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="viec" value="noi_nhom"><button class="chinh">Nối nhóm Telegram</button></form>
+  {% endif %}
+  <p class="nho">Tin trong nhóm có tên phụ huynh và tên bé (không có SĐT): chỉ để trong nhóm những người được xem toàn bộ lead.</p>
+</section>
+<section class="hop">
   <h2>Số ngày nhắc</h2>
   <form class="bieu-mau" method="post" action="/chu/cai-dat">
     <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="viec" value="cau_hinh">

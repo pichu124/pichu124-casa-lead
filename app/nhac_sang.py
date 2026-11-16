@@ -24,7 +24,8 @@ log = logging.getLogger("casa_lead.nhac_sang")
 
 def _dong(lt: logic.LeadTinh) -> str:
     be = f" (bé {lt.row['ten_be']})" if lt.row["ten_be"] else ""
-    return f"- {lt.row['ten_ph']}{be}, {lt.khan}: {lt.viec or 'Liên hệ'}"
+    khan = f"quá hạn {lt.so_ngay_qua_han} ngày" if lt.so_ngay_qua_han else lt.khan.lower()
+    return f"- {lt.row['ten_ph']}{be}, {khan}: {lt.viec or 'Liên hệ'}"
 
 
 def tin_cho_sale(conn: sqlite3.Connection, sale: sqlite3.Row, hom_nay: date) -> str | None:
@@ -52,11 +53,50 @@ def tin_cho_chu(conn: sqlite3.Connection, chu: sqlite3.Row, hom_nay: date) -> st
     return "\n".join(dong)
 
 
+def tin_cho_nhom(conn: sqlite3.Connection, hom_nay: date) -> str:
+    """Một tin cho nhóm quản lý: việc của từng sale, rồi phần của chủ. Không chứa SĐT."""
+    dong = [f"📋 Nhắc việc sáng {hom_nay:%d/%m/%Y}"]
+    chu = None
+    for nguoi in conn.execute("SELECT * FROM nguoi_dung WHERE dang_lam = 1 ORDER BY ten"):
+        if nguoi["vai_tro"] == "chu":
+            chu = chu or nguoi
+            continue
+        ds = [lt for lt in logic.tinh(conn, logic.lead_cua(conn, nguoi), hom_nay) if lt.khan in ("Quá hạn", "Hôm nay")]
+        if not ds:
+            continue
+        ds.sort(key=lambda lt: (lt.han, lt.row["id"]))
+        qua_han = sum(lt.khan == "Quá hạn" for lt in ds)
+        co_so = f" ({nguoi['co_so']})" if nguoi["co_so"] else ""
+        dong += ["", f"— {nguoi['ten']}{co_so}: {len(ds) - qua_han} hôm nay, {qua_han} quá hạn"]
+        dong += [_dong(lt) for lt in ds]
+    if len(dong) == 1:
+        dong += ["", "Hôm nay không sale nào có phụ huynh đến hạn liên hệ."]
+    if chu is not None:
+        tat_ca = logic.tinh(conn, logic.lead_cua(conn, chu), hom_nay)
+        moi = [lt for lt in tat_ca if lt.lan_cuoi is None and not lt.row["tam_dung"] and lt.khan == "Quá hạn"]
+        bo_quen = [lt for lt in tat_ca if q.bo_quen(lt.giai_doan, lt.khan)]
+        dong += ["", f"Lead mới chưa ai liên hệ (đã quá hạn): {len(moi)}"]
+        dong += [f"- {lt.row['ten_ph']} · sale {lt.row['ten_sale'] or 'chưa giao'} · nhận "
+                 f"{dongho.doc_gio(lt.row['ngay_nhan']):%d/%m}" for lt in moi]
+        dong += [f"Bỏ quên (đang chăm sóc mà quá hạn): {len(bo_quen)}"]
+    url = os.environ.get("CASA_LEAD_URL", "")
+    if url:
+        dong += ["", url]
+    return "\n".join(dong)
+
+
 def chay(conn: sqlite3.Connection, hom_nay: date, thu: bool = False, gui=None) -> list[tuple[str, str]]:
-    """Trả về danh sách (người nhận, nội dung) đã gửi hoặc sẽ gửi."""
+    """Trả về danh sách (người nhận, nội dung) đã gửi hoặc sẽ gửi. Đã nối nhóm Telegram thì chỉ gửi một tin vào
+    nhóm (thay cho tin riêng buổi sáng); chưa nối thì mỗi người nhận tin riêng."""
     gui = gui or telegram.gui_tin
     if q.la_ngay_nghi(hom_nay, logic.ngay_nghi(conn)):
         return []
+    nhom = db.lay_he_thong(conn, "telegram_nhom")
+    if nhom:
+        tin = tin_cho_nhom(conn, hom_nay)
+        if not thu and not gui(nhom, tin):
+            log.warning("Không gửi được tin nhắc sáng vào nhóm Telegram (bot bị gỡ khỏi nhóm hoặc lỗi mạng)")
+        return [(f"nhóm {db.lay_he_thong(conn, 'telegram_nhom_ten') or nhom}", tin)]
     kq = []
     for nguoi in conn.execute("SELECT * FROM nguoi_dung WHERE dang_lam = 1 ORDER BY id"):
         tin = tin_cho_chu(conn, nguoi, hom_nay) if nguoi["vai_tro"] == "chu" else tin_cho_sale(conn, nguoi, hom_nay)

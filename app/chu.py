@@ -19,7 +19,7 @@ from fastapi.responses import HTMLResponse, Response
 from starlette.concurrency import run_in_threadpool
 
 from . import db, dongho, logic, quy_tac_nhac as q, telegram
-from .main import KhongThay, _bieu_mau, _chu, _conn, _ngay_nhap, _nguoi, _ve, _ve_lai
+from .main import KhongThay, _bieu_mau, _chu, _conn, _doc_telegram, _ngay_nhap, _nguoi, _ve, _ve_lai
 
 router = APIRouter(prefix="/chu")
 
@@ -270,7 +270,9 @@ def cai_dat(request: Request, tb: str = ""):
     try:
         nguoi = _nguoi(request, conn)
         _chu(nguoi)
-        return _ve(request, "chu_cai_dat.html", nguoi, tb=tb,
+        return _ve(request, "chu_cai_dat.html", nguoi, tb=tb, tg_cau_hinh=telegram.da_cau_hinh(),
+                   nhom=db.lay_he_thong(conn, "telegram_nhom"), nhom_ten=db.lay_he_thong(conn, "telegram_nhom_ten"),
+                   nhom_ma=db.lay_he_thong(conn, "telegram_nhom_ma"),
                    cau_hinh=list(conn.execute("SELECT * FROM cau_hinh ORDER BY rowid")),
                    ngay_nghi=list(conn.execute("SELECT * FROM ngay_nghi ORDER BY ngay")),
                    danh_muc={l: db.danh_muc(conn, l) for l in db.LOAI_DANH_MUC})
@@ -322,6 +324,19 @@ async def luu_cai_dat(request: Request):
             conn.execute("INSERT OR IGNORE INTO danh_muc (loai, gia_tri, thu_tu) VALUES (?, ?, "
                          "(SELECT COALESCE(MAX(thu_tu), 0) + 1 FROM danh_muc))", (form.get("loai"), form.get("gia_tri").strip()))
             tb = "Đã thêm lựa chọn."
+        elif viec == "noi_nhom":
+            telegram.tao_ma_nhom(conn)
+            tb = "Làm theo 3 bước ở mục Nhóm Telegram bên dưới."
+        elif viec == "kiem_tra_nhom":
+            conn.commit()
+            await run_in_threadpool(_doc_telegram)
+            ten = db.lay_he_thong(conn, "telegram_nhom_ten")
+            tb = (f"Đã nối nhóm {ten or 'Telegram'}. Từ sáng mai tin nhắc gửi vào nhóm." if db.lay_he_thong(conn, "telegram_nhom")
+                  else "Chưa thấy lệnh trong nhóm. Kiểm tra bot đã ở trong nhóm và lệnh gõ đúng, rồi bấm kiểm tra lại.")
+        elif viec == "go_nhom":
+            for k in ("telegram_nhom", "telegram_nhom_ten", "telegram_nhom_ma"):
+                db.dat_he_thong(conn, k, "")
+            tb = "Đã gỡ nhóm. Tin nhắc sáng quay lại gửi riêng cho từng người."
         elif viec == "bo_danh_muc" and form.get("loai") in db.LOAI_DANH_MUC:
             conn.execute("DELETE FROM danh_muc WHERE loai = ? AND gia_tri = ?", (form.get("loai"), form.get("gia_tri") or ""))
             tb = "Đã bỏ lựa chọn (lead cũ đã chọn giá trị này vẫn giữ nguyên)."
