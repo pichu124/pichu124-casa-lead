@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2f6f4f">
+<link rel="manifest" href="/static/manifest.json">
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/static/icon-192.png">
+<link rel="stylesheet" href="/static/app.css?v=1">
+<title>{% block title %}Casa chăm sóc lead{% endblock %}</title>
+</head>
+<body>
+{% if nguoi %}
+<header class="dau">
+  <a class="ten-app" href="/hom-nay">Casa · Chăm sóc lead</a>
+  <span class="ai">{{ nguoi.ten }}</span>
+</header>
+{% endif %}
+<main class="noi-dung">
+{% block noi_dung %}{% endblock %}
+</main>
+{% if nguoi %}
+<nav class="thanh-duoi">
+  <a href="/hom-nay" class="{{ 'dang' if request.url.path == '/hom-nay' }}">Hôm nay</a>
+  <a href="/cua-toi" class="{{ 'dang' if request.url.path == '/cua-toi' }}">Của tôi</a>
+  {% if nguoi.vai_tro == 'chu' %}
+  <a href="/tat-ca" class="{{ 'dang' if request.url.path == '/tat-ca' }}">Tất cả</a>
+  <a href="/quan-tri/nguoi-dung" class="{{ 'dang' if request.url.path.startswith('/quan-tri') }}">Quản trị</a>
+  {% endif %}
+  <a href="/tai-khoan" class="{{ 'dang' if request.url.path == '/tai-khoan' }}">Tài khoản</a>
+</nav>
+{% endif %}
+<script src="/static/app.js?v=1"></script>
+</body>
+</html>

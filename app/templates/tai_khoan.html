@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Tài khoản · Casa chăm sóc lead{% endblock %}
+{% block noi_dung %}
+<h1>Tài khoản</h1>
+{% if tb %}<p class="thong-bao">{{ tb }}</p>{% endif %}
+<section class="hop">
+  <h2>Telegram</h2>
+  {% if nguoi.telegram_chat_id %}
+  <p>Đã nối Telegram. Mỗi sáng ngày làm việc lúc 8:00 bạn nhận danh sách cần liên hệ.</p>
+  {% elif not tg_cau_hinh %}
+  <p class="nho">App chưa cấu hình bot Telegram. Nhờ chủ cài đặt rồi quay lại đây.</p>
+  {% elif ma %}
+  <ol>
+    <li>Mở đường link: <a href="https://t.me/{{ ten_bot() }}?start={{ ma }}" target="_blank" rel="noopener">t.me/{{ ten_bot() }}</a></li>
+    <li>Trong Telegram bấm <strong>Bắt đầu</strong> (Start).</li>
+    <li>Quay lại đây bấm nút dưới.</li>
+  </ol>
+  <form method="post" action="/tai-khoan/telegram/kiem-tra"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="chinh">Tôi đã bấm Bắt đầu</button></form>
+  {% else %}
+  <p>Nối Telegram để mỗi sáng nhận danh sách phụ huynh cần liên hệ.</p>
+  <form method="post" action="/tai-khoan/telegram"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="chinh">Nối Telegram</button></form>
+  {% endif %}
+</section>
+<section class="hop">
+  <h2>Đổi mật khẩu</h2>
+  <form class="bieu-mau" method="post" action="/tai-khoan/mat-khau">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Mật khẩu hiện tại <input name="cu" type="password" autocomplete="current-password" required></label>
+    <label>Mật khẩu mới (ít nhất 8 ký tự) <input name="moi" type="password" autocomplete="new-password" minlength="8" required></label>
+    <label>Nhập lại mật khẩu mới <input name="lai" type="password" autocomplete="new-password" minlength="8" required></label>
+    <button>Đổi mật khẩu</button>
+  </form>
+</section>
+<form method="post" action="/dang-xuat"><input type="hidden" name="csrf" value="{{ csrf }}"><button>Đăng xuất</button></form>
+{% endblock %}

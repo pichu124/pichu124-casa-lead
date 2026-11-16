@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Sửa hồ sơ' if lead_id else 'Thêm lead' }} · Casa chăm sóc lead{% endblock %}
+{% block noi_dung %}
+<p><a href="{{ '/lead/%d' % lead_id if lead_id else '/cua-toi' }}">‹ Quay lại</a></p>
+<h1>{{ 'Sửa hồ sơ' if lead_id else 'Thêm lead' }}</h1>
+{% for l in loi %}<p class="loi">{{ l }}</p>{% endfor %}
+<form class="hop bieu-mau" method="post" action="{{ '/lead/%d/sua' % lead_id if lead_id else '/lead-moi' }}">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <label>Tên phụ huynh * <input name="ten_ph" value="{{ v.ten_ph or '' }}" required></label>
+  <label>SĐT * <input name="sdt" value="{{ v.sdt or '' }}" inputmode="tel" required></label>
+  <label>Tên bé <input name="ten_be" value="{{ v.ten_be or '' }}"></label>
+  <label>Tuổi bé <input name="tuoi_be" value="{{ v.tuoi_be or '' }}" placeholder="vd 18 tháng, 2 tuổi rưỡi, sinh năm 2022"></label>
+  <label>Ngày sinh bé <input name="ngay_sinh_be" type="date" value="{{ v.ngay_sinh_be or '' }}">
+    <span class="nho">Điền khi phụ huynh cho ngày sinh. Để trống thì app ước tính từ Tuổi bé.</span></label>
+  <label>Cơ sở
+    <select name="co_so"><option value="">—</option>
+      {% for c in ds_co_so %}<option {{ 'selected' if c == v.co_so }}>{{ c }}</option>{% endfor %}</select></label>
+  <label>Nguồn
+    <select name="nguon"><option value="">—</option>
+      {% for c in ds_nguon %}<option {{ 'selected' if c == v.nguon }}>{{ c }}</option>{% endfor %}</select></label>
+  <label>Chiến dịch / quảng cáo <input name="chien_dich" value="{{ v.chien_dich or '' }}"></label>
+  <fieldset><legend>Phụ huynh quan tâm</legend>
+    {% set da_chon = (v.ph_quan_tam or '').split(', ') %}
+    {% for c in ds_quan_tam %}<label class="chon"><input type="checkbox" name="ph_quan_tam" value="{{ c }}" {{ 'checked' if c in da_chon }}> {{ c }}</label>{% endfor %}
+  </fieldset>
+  {% if nguoi.vai_tro == 'chu' %}
+  <label>Sale phụ trách
+    <select name="sale_id"><option value="">Chưa giao</option>
+      {% for s in ds_sale %}<option value="{{ s.id }}" {{ 'selected' if s.id == v.sale_id }}>{{ s.ten }}</option>{% endfor %}</select></label>
+  {% endif %}
+  <label>Chất lượng lead
+    <select name="chat_luong" data-dieu-khien="chat_luong"><option value="">—</option>
+      {% for c in ds_chat_luong %}<option {{ 'selected' if c == v.chat_luong }}>{{ c }}</option>{% endfor %}</select></label>
+  <label data-hien-khi="chat_luong=Trung bình|Kém">Lý do chất lượng
+    <select name="ly_do_chat_luong"><option value="">—</option>
+      {% for c in ds_ly_do_cl %}<option {{ 'selected' if c == v.ly_do_chat_luong }}>{{ c }}</option>{% endfor %}</select></label>
+  <label>Ghi chú <textarea name="ghi_chu" rows="3">{{ v.ghi_chu or '' }}</textarea></label>
+  <fieldset><legend>Gia đình có em nhỏ?</legend>
+    {% for c in [''] + q.EM_NHO %}<label class="chon"><input type="radio" name="em_nho" value="{{ c }}" data-dieu-khien="em_nho" {{ 'checked' if c == (v.em_nho or '') }}> {{ c or 'Chưa hỏi' }}</label>{% endfor %}
+  </fieldset>
+  <label data-hien-khi="em_nho=Có em nhỏ|Sắp sinh em">Ngày sinh (hoặc dự sinh) của em *
+    <input name="ngay_sinh_em" type="date" value="{{ v.ngay_sinh_em or '' }}"></label>
+  {% if nguoi.vai_tro == 'chu' %}
+  <label class="chon"><input type="checkbox" name="tam_dung" value="1" {{ 'checked' if v.tam_dung }}> Tạm dừng (không nhắc lead này nữa)</label>
+  {% endif %}
+  <button class="chinh">Lưu</button>
+</form>
+{% endblock %}

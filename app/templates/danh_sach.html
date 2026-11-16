@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ tieu_de }} · Casa chăm sóc lead{% endblock %}
+{% block noi_dung %}
+<h1>{{ tieu_de }} <small>{{ tong }} lead</small></h1>
+<form class="tim" method="get" action="{{ duong_dan }}">
+  <input name="tim" value="{{ tim }}" placeholder="Tên phụ huynh, tên bé, vài số cuối SĐT" aria-label="Tìm">
+  {% if ds_sale is defined %}
+  <select name="sale" aria-label="Sale">
+    <option value="0">Mọi sale</option>
+    {% for s in ds_sale %}<option value="{{ s.id }}" {{ 'selected' if s.id == sale }}>{{ s.ten }}</option>{% endfor %}
+  </select>
+  <select name="co_so" aria-label="Cơ sở">
+    <option value="">Mọi cơ sở</option>
+    {% for c in ds_co_so %}<option {{ 'selected' if c == co_so }}>{{ c }}</option>{% endfor %}
+  </select>
+  {% endif %}
+  <button>Tìm</button>
+</form>
+{% if not nhom %}<p class="trong">Không có lead nào{% if tim %} khớp "{{ tim }}"{% endif %}.</p>{% endif %}
+{% set show_sale = ds_sale is defined %}
+{% for ten_nhom, ds in nhom %}
+<h2 class="nhom">{{ ten_nhom }} <small>{{ ds|length }}</small></h2>
+{% for lt in ds %}{% include "_the.html" %}{% endfor %}
+{% endfor %}
+<a class="nut-noi" href="/lead-moi" aria-label="Thêm lead">+</a>
+{% endblock %}

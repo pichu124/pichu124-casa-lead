@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Hôm nay · Casa chăm sóc lead{% endblock %}
+{% block noi_dung %}
+<h1>Hôm nay <small>{{ ngay_vn(hom_nay) }}</small></h1>
+{% if not ds %}
+<p class="trong">Không còn phụ huynh nào cần liên hệ hôm nay. Xong việc!</p>
+{% else %}
+<p class="nho">{{ ds|length }} phụ huynh, quá hạn lên đầu. Gọi xong bấm vào lead để ghi nhận.</p>
+{% for lt in ds %}{% include "_the.html" %}{% endfor %}
+{% endif %}
+<a class="nut-noi" href="/lead-moi" aria-label="Thêm lead">+</a>
+{% endblock %}

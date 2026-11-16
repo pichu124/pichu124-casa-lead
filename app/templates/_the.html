@@ -1,0 +1,10 @@
+{# Một thẻ lead trong danh sách. Cần biến `lt` (logic.LeadTinh). #}
+<a class="the khan-{{ {'Quá hạn': 'qua', 'Hôm nay': 'nay', 'Sắp tới': 'toi'}.get(lt.khan, 'khac') }}" href="/lead/{{ lt.row.id }}">
+  <div class="the-dong1">
+    <strong>{% if lt.khan == 'Quá hạn' %}⚠ {% endif %}{{ lt.row.ten_ph }}</strong>
+    {% if lt.row.ten_be %}<span class="be">bé {{ lt.row.ten_be }}</span>{% endif %}
+    <span class="han">{% if lt.han %}{{ ngay_vn(lt.han) }}{% endif %}</span>
+  </div>
+  {% if lt.viec %}<div class="viec">{{ lt.viec }}</div>{% endif %}
+  <div class="tom-tat">{{ lt.lan_cuoi_tom_tat }}{% if show_sale and lt.row.ten_sale %} · {{ lt.row.ten_sale }}{% endif %}</div>
+</a>

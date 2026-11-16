@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Ghi nhận · {{ r.ten_ph }}{% endblock %}
+{% block noi_dung %}
+<p><a href="/lead/{{ r.id }}">‹ {{ r.ten_ph }}</a></p>
+<h1>{{ 'Sửa lần chăm sóc' if cs_id else 'Ghi nhận lần chăm sóc' }}</h1>
+{% for l in loi %}<p class="loi">{{ l }}</p>{% endfor %}
+<form class="hop bieu-mau" method="post" action="{{ '/cham-soc/%d/sua' % cs_id if cs_id else '/lead/%d/ghi-nhan' % r.id }}">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <fieldset><legend>Phương thức *</legend>
+    {% for c in ds_phuong_thuc %}<label class="chon"><input type="radio" name="phuong_thuc" value="{{ c }}" {{ 'checked' if c == v.phuong_thuc }} required> {{ c }}</label>{% endfor %}
+  </fieldset>
+  <label class="chon"><input type="checkbox" name="ph_chu_dong" value="1" {{ 'checked' if v.ph_chu_dong }}> Phụ huynh chủ động liên hệ</label>
+  <fieldset><legend>Tình trạng *</legend>
+    {% for c in q.TINH_TRANG %}<label class="chon"><input type="radio" name="tinh_trang" value="{{ c }}" data-dieu-khien="tinh_trang" {{ 'checked' if c == v.tinh_trang }} required> {{ c }}</label>{% endfor %}
+  </fieldset>
+  <fieldset data-an-khi="tinh_trang=Từ chối|Chưa liên lạc được|Hẹn nhưng không đến"><legend>Mức quan tâm *</legend>
+    {% for c in ds_muc %}<label class="chon"><input type="radio" name="muc_quan_tam" value="{{ c }}" {{ 'checked' if c == v.muc_quan_tam }}> {{ c }}</label>{% endfor %}
+  </fieldset>
+  <label>Phụ huynh nói gì <textarea name="phan_hoi" rows="2" placeholder="vd Băn khoăn học phí, hỏi thêm chồng">{{ v.phan_hoi or '' }}</textarea></label>
+  <fieldset data-hien-khi="tinh_trang=Từ chối"><legend>Lý do từ chối *</legend>
+    {% for c in q.LY_DO_TU_CHOI %}<label class="chon"><input type="radio" name="ly_do_tu_choi" value="{{ c }}" {{ 'checked' if c == v.ly_do_tu_choi }}> {{ c }}</label>{% endfor %}
+  </fieldset>
+  <fieldset data-an-khi="tinh_trang=Từ chối|Đã nhập học|Đã đặt cọc|Hẹn nhưng không đến"><legend>Hẹn lại sau <span class="nho">(chỉ chọn khi phụ huynh hẹn thời gian cụ thể)</span></legend>
+    <label class="chon"><input type="radio" name="hen_lai_sau" value="" data-dieu-khien="hen_lai_sau" {{ 'checked' if not v.hen_lai_sau }}> Không hẹn</label>
+    {% for c in ds_hen %}<label class="chon"><input type="radio" name="hen_lai_sau" value="{{ c }}" data-dieu-khien="hen_lai_sau" {{ 'checked' if c == v.hen_lai_sau }}> {{ c }}</label>{% endfor %}
+  </fieldset>
+  <label data-hien-khi="hen_lai_sau=Chọn ngày">Ngày hẹn gọi lại * <input name="ngay_hen_goi_lai" type="date" value="{{ v.ngay_hen_goi_lai or '' }}"></label>
+  <label data-hien-khi="tinh_trang=Đã hẹn tham quan / học thử">Ngày hẹn tham quan * <input name="ngay_hen_tham_quan" type="date" value="{{ v.ngay_hen_tham_quan or '' }}"></label>
+  <label data-hien-khi="tinh_trang=Đã đặt cọc">Ngày nhập học dự kiến <input name="ngay_nhap_hoc" type="date" value="{{ v.ngay_nhap_hoc or '' }}"></label>
+  <label class="chon" data-hien-khi="tinh_trang=Đã đặt cọc"><input type="checkbox" name="da_gui_thu_moi" value="1" {{ 'checked' if v.da_gui_thu_moi }}> Đã gửi thư mời tuyển sinh</label>
+  <button class="chinh">Lưu</button>
+</form>
+{% endblock %}

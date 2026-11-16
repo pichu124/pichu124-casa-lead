@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}{{ r.ten_ph }} · Casa chăm sóc lead{% endblock %}
+{% block noi_dung %}
+<p><a href="javascript:history.back()">‹ Quay lại</a></p>
+<section class="hop">
+  <h1>{% if lt.khan == 'Quá hạn' %}⚠ {% endif %}{{ r.ten_ph }}</h1>
+  <p class="sdt">
+    <span>{{ r.sdt }}</span>
+    <a class="nut" href="tel:{{ r.sdt|replace(' ', '') }}">Gọi</a>
+    <a class="nut" href="sms:{{ r.sdt|replace(' ', '') }}">SMS</a>
+    <a class="nut" href="{{ zalo }}" target="_blank" rel="noopener">Zalo</a>
+  </p>
+  {% if lt.viec %}<p class="viec-lon">{{ lt.viec }}</p>{% endif %}
+  <dl class="bang">
+    <dt>Giai đoạn</dt><dd>{{ lt.giai_doan }}</dd>
+    <dt>Hạn liên hệ</dt><dd>{% if lt.han %}{{ ngay_vn(lt.han) }} · {{ lt.khan }}{% if lt.so_ngay_qua_han %} ({{ lt.so_ngay_qua_han }} ngày){% endif %}{% else %}Không nhắc{% endif %}</dd>
+    <dt>Tình trạng</dt><dd>{{ lt.tinh_trang_hien_tai }}</dd>
+    {% if lt.lan_cuoi and lt.lan_cuoi.muc_quan_tam %}<dt>Mức quan tâm</dt><dd>{{ lt.lan_cuoi.muc_quan_tam }}</dd>{% endif %}
+  </dl>
+  <div class="hang-nut">
+    <a class="nut chinh" href="/lead/{{ r.id }}/ghi-nhan">Ghi nhận lần chăm sóc</a>
+    {% if hien_thu_moi %}
+    <form method="post" action="/lead/{{ r.id }}/da-gui-thu-moi" onsubmit="return confirm('Đã gửi thư mời tuyển sinh cho phụ huynh này?')">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><button class="nut">Đã gửi thư mời</button>
+    </form>
+    {% endif %}
+    {% if hien_tao_em %}<a class="nut" href="/lead-moi?em_cua={{ r.id }}">Tạo lead cho em</a>{% endif %}
+    <a class="nut" href="/lead/{{ r.id }}/sua">Sửa hồ sơ</a>
+  </div>
+</section>
+
+<section class="hop">
+  <h2>Bé và gia đình</h2>
+  <dl class="bang">
+    <dt>Tên bé</dt><dd>{{ r.ten_be or '—' }}</dd>
+    <dt>Tuổi bé</dt><dd>{{ r.tuoi_be or '—' }}</dd>
+    <dt>Ngày sinh</dt><dd>{% if r.ngay_sinh_be %}{{ ngay_vn(doc_ngay(r.ngay_sinh_be)) }}{% elif lt.ngay_sinh %}khoảng {{ ngay_vn(lt.ngay_sinh) }} (ước tính từ tuổi){% else %}—{% endif %}</dd>
+    {% if lt.du_tuoi %}<dt>Đủ tuổi nhận học</dt><dd>{{ ngay_vn(lt.du_tuoi) }}</dd>{% endif %}
+    {% if r.em_nho %}<dt>Gia đình có em nhỏ?</dt><dd>{{ r.em_nho }}{% if r.ngay_sinh_em %} · {{ ngay_vn(doc_ngay(r.ngay_sinh_em)) }}{% endif %}</dd>{% endif %}
+    <dt>Cơ sở</dt><dd>{{ r.co_so or '—' }}</dd>
+    <dt>Nguồn</dt><dd>{{ r.nguon or '—' }}{% if r.chien_dich %} · {{ r.chien_dich }}{% endif %}</dd>
+    <dt>Quan tâm</dt><dd>{{ r.ph_quan_tam or '—' }}</dd>
+    <dt>Chất lượng</dt><dd>{{ r.chat_luong or '—' }}{% if r.ly_do_chat_luong %} · {{ r.ly_do_chat_luong }}{% endif %}</dd>
+    <dt>Sale phụ trách</dt><dd>{{ r.ten_sale or 'Chưa giao' }}</dd>
+    <dt>Nhận lead</dt><dd>{{ gio_vn(doc_gio(r.ngay_nhan)) }}</dd>
+    {% if r.tam_dung %}<dt>Tạm dừng</dt><dd>Có (chủ đã dừng lead này)</dd>{% endif %}
+  </dl>
+  {% if r.ghi_chu %}<p class="ghi-chu">{{ r.ghi_chu }}</p>{% endif %}
+</section>
+
+<section class="hop">
+  <h2>Các lần chăm sóc <small>{{ lt.lich_su|length }}</small></h2>
+  {% if not lt.lich_su %}<p class="trong">Chưa liên hệ lần nào.</p>{% endif %}
+  <ol class="lich-su">
+  {% for c in lt.lich_su|reverse %}
+    <li>
+      <div><strong>{{ gio_vn(doc_gio(c.thoi_gian)) }}</strong> · {{ c.tinh_trang }}{% if c.ly_do_tu_choi %} ({{ c.ly_do_tu_choi }}){% endif %}</div>
+      <div class="nho">{{ c.phuong_thuc }} · {{ ten_sale.get(c.sale_id, '') }}{% if c.muc_quan_tam %} · {{ c.muc_quan_tam }}{% endif %}{% if c.ph_chu_dong %} · phụ huynh chủ động{% endif %}</div>
+      {% if c.phan_hoi %}<div>{{ c.phan_hoi }}</div>{% endif %}
+      {% if c.hen_lai_sau %}<div class="nho">Hẹn lại sau: {{ c.hen_lai_sau }}{% if c.ngay_hen_goi_lai %} ({{ ngay_vn(doc_ngay(c.ngay_hen_goi_lai)) }}){% endif %}</div>{% endif %}
+      {% if c.ngay_hen_tham_quan %}<div class="nho">Hẹn tham quan: {{ ngay_vn(doc_ngay(c.ngay_hen_tham_quan)) }}</div>{% endif %}
+      {% if c.ngay_nhap_hoc %}<div class="nho">Nhập học dự kiến: {{ ngay_vn(doc_ngay(c.ngay_nhap_hoc)) }}</div>{% endif %}
+      {% if c.da_gui_thu_moi %}<div class="nho">Đã gửi thư mời</div>{% endif %}
+      {% if co_the_sua_cs(c) %}<a class="nho" href="/cham-soc/{{ c.id }}/sua">Sửa</a>{% endif %}
+    </li>
+  {% endfor %}
+  </ol>
+</section>
+{% endblock %}

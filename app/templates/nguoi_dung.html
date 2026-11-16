@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Người dùng · Casa chăm sóc lead{% endblock %}
+{% block noi_dung %}
+<h1>Người dùng</h1>
+{% if tb %}<p class="thong-bao">{{ tb }}</p>{% endif %}
+{% for u in ds %}
+<section class="hop {{ 'mo' if not u.dang_lam }}">
+  <strong>{{ u.ten }}</strong> · {{ u.ten_dang_nhap }} · {{ 'Chủ' if u.vai_tro == 'chu' else 'Sale' }}{% if u.co_so %} · {{ u.co_so }}{% endif %}
+  <div class="nho">{{ 'Đã nối Telegram' if u.telegram_chat_id else 'Chưa nối Telegram' }}{% if not u.dang_lam %} · đã nghỉ{% endif %}</div>
+  <details><summary>Đặt lại mật khẩu, nghỉ việc</summary>
+    <form class="bieu-mau" method="post" action="/quan-tri/nguoi-dung/{{ u.id }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="viec" value="dat_mat_khau">
+      <label>Mật khẩu mới <input name="mat_khau" type="text" minlength="8" required></label>
+      <button>Đặt lại mật khẩu</button>
+    </form>
+    {% if u.id != nguoi.id %}
+    <form method="post" action="/quan-tri/nguoi-dung/{{ u.id }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="viec" value="{{ 'nghi' if u.dang_lam else 'lam_lai' }}">
+      <button>{{ 'Tắt tài khoản (nghỉ việc)' if u.dang_lam else 'Bật lại tài khoản' }}</button>
+    </form>
+    {% endif %}
+  </details>
+</section>
+{% endfor %}
+<section class="hop">
+  <h2>Thêm người dùng</h2>
+  <form class="bieu-mau" method="post" action="/quan-tri/nguoi-dung">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Tên đăng nhập (không dấu) <input name="ten_dang_nhap" autocapitalize="none" required></label>
+    <label>Tên hiển thị <input name="ten" required></label>
+    <label>Cơ sở <select name="co_so"><option value="">—</option>{% for c in ds_co_so %}<option>{{ c }}</option>{% endfor %}</select></label>
+    <label>Vai trò <select name="vai_tro"><option value="sale">Sale</option><option value="chu">Chủ</option></select></label>
+    <label>Mật khẩu ban đầu (ít nhất 8 ký tự) <input name="mat_khau" type="text" minlength="8" required></label>
+    <button class="chinh">Thêm</button>
+  </form>
+</section>
+{% endblock %}
