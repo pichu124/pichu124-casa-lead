@@ -50,6 +50,8 @@ def tin_cho_chu(conn: sqlite3.Connection, chu: sqlite3.Row, hom_nay: date) -> st
     dong += [f"- {lt.row['ten_ph']} · sale {lt.row['ten_sale'] or 'chưa giao'} · nhận {dongho.doc_gio(lt.row['ngay_nhan']):%d/%m}"
              for lt in moi]
     dong += ["", f"Lead bỏ quên (đang chăm sóc mà quá hạn): {len(bo_quen)}"]
+    if logic.so_chua_giao(conn):
+        dong += [f"⚠ Lead chưa giao sale: {logic.so_chua_giao(conn)} (mở app → Tất cả lead)"]
     if messenger.da_cau_hinh():
         dong += [f"Messenger chưa giao: {messenger.so_chua_nhan(conn)} (Quản trị → Messenger chưa nhận)"]
     return "\n".join(dong)
@@ -81,6 +83,8 @@ def tin_cho_nhom(conn: sqlite3.Connection, hom_nay: date) -> str:
         dong += [f"- {lt.row['ten_ph']} · sale {lt.row['ten_sale'] or 'chưa giao'} · nhận "
                  f"{dongho.doc_gio(lt.row['ngay_nhan']):%d/%m}" for lt in moi]
         dong += [f"Bỏ quên (đang chăm sóc mà quá hạn): {len(bo_quen)}"]
+        if logic.so_chua_giao(conn):
+            dong += [f"⚠ Lead chưa giao sale: {logic.so_chua_giao(conn)} (mở app → Tất cả lead)"]
         if messenger.da_cau_hinh():
             dong += [f"Messenger chưa giao: {messenger.so_chua_nhan(conn)}"]
     url = os.environ.get("CASA_LEAD_URL", "")

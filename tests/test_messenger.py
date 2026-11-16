@@ -135,7 +135,9 @@ def test_customer_id_la_hoac_cua_sale_bi_bo_qua(sheet):
     conn = db.ket_noi()
     messenger.dong_bo(conn)
     c = dang_nhap("chu")
-    c.post("/lead-moi", data={"csrf": csrf(c, "/lead-moi"), "ten_ph": "X Thử", "sdt": "0911000777", "customer_id": "khong-co"})
+    sale2 = conn.execute("SELECT id FROM nguoi_dung WHERE ten_dang_nhap = 'sale2'").fetchone()[0]
+    c.post("/lead-moi", data={"csrf": csrf(c, "/lead-moi"), "ten_ph": "X Thử", "sdt": "0911000777", "customer_id": "khong-co",
+                              "sale_id": str(sale2)})
     assert conn.execute("SELECT customer_id FROM lead WHERE ten_ph = 'X Thử'").fetchone()[0] == ""
     s = dang_nhap("sale1")
     s.post("/lead-moi", data={"csrf": csrf(s, "/lead-moi"), "ten_ph": "Y Thử", "sdt": "0911000888", "customer_id": "1002"})

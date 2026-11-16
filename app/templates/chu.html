@@ -5,6 +5,7 @@
 <section class="hop">
   <h2>Theo dõi</h2>
   <ul class="ds-lien-ket">
+    {% if so_chua_giao %}<li><a class="dong" href="/tat-ca"><span><b>Lead chưa giao</b><small>chưa có sale phụ trách: không ai gọi, không ai được nhắc</small></span><strong class="dem-do">{{ so_chua_giao }}</strong></a></li>{% endif %}
     <li><a class="dong" href="/chu/messenger"><span><b>Messenger chưa nhận</b><small>phụ huynh để SĐT cho bot, chờ giao sale</small></span>{% if so_messenger %}<strong class="dem-do">{{ so_messenger }}</strong>{% endif %}</a></li>
     <li><a class="dong" href="/chu/bo-quen"><span><b>Bỏ quên</b><small>lead đang chăm sóc mà quá hạn, nhắc sale</small></span>{% if so_bo_quen %}<strong class="dem-do">{{ so_bo_quen }}</strong>{% endif %}</a></li>
     <li><a class="dong" href="/chu/rat-quan-tam"><span><b>Rất quan tâm chưa chốt</b><small>nên gọi kèm sale</small></span></a></li>

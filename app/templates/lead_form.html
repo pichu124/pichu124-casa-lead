@@ -32,8 +32,8 @@
       <input name="ph_quan_tam_khac" value="{{ khac_go }}" placeholder="vd Bán trú, học bơi, giờ đón muộn"></label>
   </fieldset>
   {% if nguoi.vai_tro == 'chu' %}
-  <label>Sale phụ trách
-    <select name="sale_id"><option value="">Chưa giao</option>
+  <label>Sale phụ trách *
+    <select name="sale_id" required><option value="">— Chọn sale —</option>
       {% for s in ds_sale %}<option value="{{ s.id }}" {{ 'selected' if s.id == v.sale_id }}>{{ s.ten }}{% if not s.dang_lam %} (đã nghỉ){% endif %}</option>{% endfor %}</select></label>
   {% endif %}
   <label>Chất lượng lead

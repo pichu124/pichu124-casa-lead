@@ -143,6 +143,11 @@ def cac_co_so(s: str | None) -> list[str]:
     return [x.strip() for x in (s or "").split(",") if x.strip()]
 
 
+def so_chua_giao(conn: sqlite3.Connection) -> int:
+    """Lead chưa có sale phụ trách (trừ lead chủ đã tạm dừng)."""
+    return conn.execute("SELECT COUNT(*) FROM lead WHERE sale_id IS NULL AND tam_dung = 0").fetchone()[0]
+
+
 def lead_cua(conn: sqlite3.Connection, nguoi: sqlite3.Row, sale_id: int | None = None,
              co_so: str = "") -> list[sqlite3.Row]:
     """Lead người này được thấy: sale chỉ thấy lead mình phụ trách, chủ thấy tất cả (lọc được)."""

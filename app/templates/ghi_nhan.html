@@ -18,7 +18,9 @@
   </fieldset>
   <label>Phụ huynh nói gì <textarea name="phan_hoi" rows="2" placeholder="vd Băn khoăn học phí, hỏi thêm chồng">{{ v.phan_hoi or '' }}</textarea></label>
   <fieldset data-hien-khi="tinh_trang=Từ chối"><legend>Lý do từ chối *</legend>
-    {% for c in q.LY_DO_TU_CHOI %}<label class="chon"><input type="radio" name="ly_do_tu_choi" value="{{ c }}" {{ 'checked' if c == v.ly_do_tu_choi }}> {{ c }}</label>{% endfor %}
+    {% for c in q.LY_DO_TU_CHOI %}<label class="chon"><input type="radio" name="ly_do_tu_choi" value="{{ c }}" data-dieu-khien="ly_do_tu_choi" {{ 'checked' if c == v.ly_do_tu_choi }}> {{ c }}</label>{% endfor %}
+    <label data-hien-khi="ly_do_tu_choi=Khác">Lý do khác, ghi rõ *
+      <input name="ly_do_chi_tiet" value="{{ v.ly_do_chi_tiet or '' }}" maxlength="300" placeholder="vd Cơ sở đang thi công, hẹn 3 tháng sau liên hệ lại"></label>
   </fieldset>
   <fieldset data-an-khi="tinh_trang=Từ chối|Đã nhập học|Đã đặt cọc|Hẹn nhưng không đến"><legend>Hẹn lại sau <span class="nho">(chỉ chọn khi phụ huynh hẹn thời gian cụ thể)</span></legend>
     <label class="chon"><input type="radio" name="hen_lai_sau" value="" data-dieu-khien="hen_lai_sau" {{ 'checked' if not v.hen_lai_sau }}> Không hẹn</label>

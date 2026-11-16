@@ -38,6 +38,7 @@ def trang_chu(request: Request):
         _chu(nguoi)
         so = sum(q.bo_quen(lt.giai_doan, lt.khan) for lt in _tat_ca(conn, nguoi))
         return _ve(request, "chu.html", nguoi, so_bo_quen=so, so_messenger=messenger.so_chua_nhan(conn),
+                   so_chua_giao=logic.so_chua_giao(conn),
                    messenger_cau_hinh=messenger.da_cau_hinh())
     finally:
         conn.close()
@@ -457,7 +458,8 @@ def xuat(request: Request, ten: str):
                 truoc = [x for i, x in cua_lead[r["lead_id"]] if i != r["id"]]
                 tiep = q.han_lien_he_tiep(c, truoc, ch, nghi)
                 w.writerow([r["id"], r["lead_id"], r["thoi_gian"], ten_sale.get(r["sale_id"], ""), r["phuong_thuc"],
-                            r["tinh_trang"], r["muc_quan_tam"], r["phan_hoi"], r["ly_do_tu_choi"],
+                            r["tinh_trang"], r["muc_quan_tam"], r["phan_hoi"],
+                            r["ly_do_tu_choi"] + (f": {r['ly_do_chi_tiet']}" if r["ly_do_chi_tiet"] else ""),
                             han.isoformat() if han else "", r["ngay_hen_tham_quan"] or "", q.lan_thu(truoc, c),
                             tiep.isoformat() if tiep else "",
                             "TRUE" if r["ph_chu_dong"] else "FALSE", r["hen_lai_sau"],

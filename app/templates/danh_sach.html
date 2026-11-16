@@ -2,6 +2,7 @@
 {% block title %}{{ tieu_de }} · Casa chăm sóc lead{% endblock %}
 {% block noi_dung %}
 <h1>{{ tieu_de }} <small>{{ tong }} lead</small></h1>
+{% if so_chua_giao %}<p class="loi"><strong>{{ so_chua_giao }} lead chưa giao sale</strong> (nhãn đỏ "Chưa giao sale" bên dưới): mở từng lead → Sửa hồ sơ → chọn Sale phụ trách.</p>{% endif %}
 {% if so_messenger %}<p class="thong-bao">Có {{ so_messenger }} phụ huynh Messenger chưa nhận vào app (đã để SĐT cho bot, chưa có hồ sơ).
   <a href="/chu/messenger">Giao lead</a></p>{% endif %}
 <form class="tim" method="get" action="{{ duong_dan }}">

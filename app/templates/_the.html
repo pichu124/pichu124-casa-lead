@@ -8,5 +8,6 @@
   </div>
   {% if lt.viec %}<div class="viec">{{ lt.viec }}</div>{% endif %}
   <div class="tom-tat">{{ lt.lan_cuoi_tom_tat }}{% if show_sale and lt.row.ten_sale %} · {{ lt.row.ten_sale }}{% endif %}</div>
+  {% if show_sale and not lt.row.sale_id and not lt.row.tam_dung %}<span class="nhan nhan-qua nhan-chua-giao">Chưa giao sale</span>{% endif %}
   {% if lt.khan == 'Quá hạn' %}<span class="nhan nhan-qua">Quá hạn {{ lt.so_ngay_qua_han }} ngày</span>{% endif %}
 </a>

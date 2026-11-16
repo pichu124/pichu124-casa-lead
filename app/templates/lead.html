@@ -6,6 +6,8 @@
   <h1>{{ r.ten_ph }}</h1>
   <p class="phu-de">{% if r.ten_be %}bé {{ r.ten_be }}{% if r.tuoi_be %} · {{ r.tuoi_be }}{% endif %} · {% endif %}{{ r.co_so or 'chưa rõ cơ sở' }}
     {% if lt.khan == 'Quá hạn' %}<span class="nhan nhan-qua">Quá hạn {{ lt.so_ngay_qua_han }} ngày</span>{% elif lt.khan == 'Hôm nay' %}<span class="nhan nhan-nay">Hôm nay</span>{% endif %}</p>
+  {% if not r.sale_id and not r.tam_dung %}<p class="canh-bao"><strong>Chưa giao sale.</strong> Không ai gọi và không ai được nhắc lead này.
+    {% if nguoi.vai_tro == 'chu' %}<a href="/lead/{{ r.id }}/sua">Chọn sale phụ trách</a>{% endif %}</p>{% endif %}
   <p class="sdt-so">{{ r.sdt }}</p>
   <div class="goi">
     <a class="nut" href="tel:{{ r.sdt|replace(' ', '') }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h3.5l1.8 4.4-2.2 1.4a11 11 0 0 0 6.1 6.1l1.4-2.2L20 15.5V19a1.5 1.5 0 0 1-1.6 1.5C10.6 20 4 13.4 3.5 5.6A1.5 1.5 0 0 1 5 4z"/></svg>Gọi</a>
@@ -56,7 +58,7 @@
   <ol class="lich-su">
   {% for c in lt.lich_su|reverse %}
     <li>
-      <div><strong>{{ gio_vn(doc_gio(c.thoi_gian)) }}</strong> · {{ c.tinh_trang }}{% if c.ly_do_tu_choi %} ({{ c.ly_do_tu_choi }}){% endif %}</div>
+      <div><strong>{{ gio_vn(doc_gio(c.thoi_gian)) }}</strong> · {{ c.tinh_trang }}{% if c.ly_do_tu_choi %} ({{ c.ly_do_tu_choi }}{% if c.ly_do_chi_tiet %}: {{ c.ly_do_chi_tiet }}{% endif %}){% endif %}</div>
       <div class="nho">{{ c.phuong_thuc }} · {{ ten_sale.get(c.sale_id, '') }}{% if c.muc_quan_tam %} · {{ c.muc_quan_tam }}{% endif %}{% if c.ph_chu_dong %} · phụ huynh chủ động{% endif %}</div>
       {% if c.phan_hoi %}<div>{{ c.phan_hoi }}</div>{% endif %}
       {% if c.hen_lai_sau %}<div class="nho">Hẹn lại sau: {{ c.hen_lai_sau }}{% if c.ngay_hen_goi_lai %} ({{ ngay_vn(doc_ngay(c.ngay_hen_goi_lai)) }}){% endif %}</div>{% endif %}

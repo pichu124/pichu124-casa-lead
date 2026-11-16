@@ -143,9 +143,16 @@ def ket_noi(duong_dan: Path | None = None) -> sqlite3.Connection:
     return conn
 
 
+def _them_cot(conn: sqlite3.Connection, bang: str, cot: str, kieu: str) -> None:
+    """Thêm cột nếu bảng chưa có (lược đồ chỉ thêm)."""
+    if cot not in {r[1] for r in conn.execute(f"PRAGMA table_info({bang})")}:
+        conn.execute(f"ALTER TABLE {bang} ADD COLUMN {cot} {kieu}")
+
+
 def khoi_tao(conn: sqlite3.Connection) -> None:
     """Tạo bảng nếu chưa có, điền cấu hình mặc định. Chạy mỗi lần khởi động: không xoá gì."""
     conn.executescript(SCHEMA)
+    _them_cot(conn, "cham_soc", "ly_do_chi_tiet", "TEXT NOT NULL DEFAULT ''")  # chi tiết khi lý do từ chối là "Khác"
     for khoa, gia_tri in q.CAU_HINH_MAC_DINH.items():
         conn.execute("INSERT OR IGNORE INTO cau_hinh (khoa, gia_tri, y_nghia) VALUES (?, ?, ?)",
                      (khoa, gia_tri, q.Y_NGHIA_CAU_HINH.get(khoa, "")))

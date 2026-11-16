@@ -242,3 +242,5 @@ details[open] > summary { margin-bottom: 12px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 .cuon-ngang + .nho, .bang-so + .nho { margin-top: 10px; }
 .ghi-chu-bot { margin: 10px 0 0; padding: 10px 12px; background: var(--nen); border-radius: var(--bo-nho); font-size: 14px; grid-template-columns: max-content 1fr; }
+.canh-bao { background: var(--gach); color: #fff; border-radius: var(--bo-nho); padding: 11px 14px; margin: 0 0 14px; font-size: 15px; }
+.canh-bao a { color: #fff; font-weight: 600; }

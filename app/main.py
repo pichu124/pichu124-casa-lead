@@ -244,6 +244,7 @@ def tat_ca(request: Request, tim: str = "", sale: int = 0, co_so: str = ""):
         return _ve(request, "danh_sach.html", nguoi, nhom=_nhom(ds), tim=tim, tieu_de="Tất cả lead",
                    duong_dan="/tat-ca", tong=len(ds), ds_sale=ds_sale, sale=sale, co_so=co_so,
                    so_messenger=messenger_mod.so_chua_nhan(conn),
+                   so_chua_giao=logic.so_chua_giao(conn),
                    ds_co_so=db.danh_muc(conn, "Cơ sở"))
     finally:
         conn.close()
@@ -298,6 +299,9 @@ def _gia_tri_lead(form, nguoi: sqlite3.Row, cu: sqlite3.Row | None) -> tuple[dic
         sale = _chu_nhan(form, "sale_id")
         v["sale_id"] = int(sale) if sale.isdigit() else None
         v["tam_dung"] = 1 if form.get("tam_dung") else 0
+        # Lead không ai phụ trách thì không ai gọi, không ai được nhắc: không cho lưu khi chưa chọn sale
+        if v["sale_id"] is None or not _sale_hop_le(v["sale_id"], cu):
+            loi.append("Chọn sale phụ trách trước khi lưu (lead chưa giao thì không ai gọi, không ai được nhắc).")
     else:  # sale không đổi được người phụ trách và Tạm dừng, kể cả khi sửa tay biểu mẫu
         v["sale_id"] = cu["sale_id"] if cu else nguoi["id"]
         v["tam_dung"] = cu["tam_dung"] if cu else 0
@@ -332,6 +336,17 @@ def _quan_tam_nhap(form) -> str:
         if x and x not in chon:
             chon.append(x)
     return ", ".join(chon)
+
+
+def _sale_hop_le(sale_id: int, cu: sqlite3.Row | None) -> bool:
+    """Sale đang làm, hoặc đúng người đang phụ trách lead này (dù đã nghỉ: lưu hồ sơ không làm mất người phụ trách)."""
+    if cu is not None and cu["sale_id"] == sale_id:
+        return True
+    conn = _conn()
+    try:
+        return conn.execute("SELECT 1 FROM nguoi_dung WHERE id = ? AND dang_lam = 1", (sale_id,)).fetchone() is not None
+    finally:
+        conn.close()
 
 
 def _co_so_nhap(chon: list[str]) -> str:
@@ -497,7 +512,7 @@ async def sua_lead(request: Request, lead_id: int):
 
 def _gia_tri_cham_soc(form) -> tuple[dict, list[str]]:
     v = {k: _chu_nhan(form, k) for k in ("phuong_thuc", "tinh_trang", "muc_quan_tam", "phan_hoi",
-                                         "ly_do_tu_choi", "hen_lai_sau")}
+                                         "ly_do_tu_choi", "ly_do_chi_tiet", "hen_lai_sau")}
     v["ph_chu_dong"] = 1 if form.get("ph_chu_dong") else 0
     v["da_gui_thu_moi"] = 1 if form.get("da_gui_thu_moi") else 0
     tt, loi = v["tinh_trang"], []
@@ -518,8 +533,12 @@ def _gia_tri_cham_soc(form) -> tuple[dict, list[str]]:
     if tt == q.TU_CHOI:
         if v["ly_do_tu_choi"] not in q.LY_DO_TU_CHOI:
             loi.append("Chọn lý do từ chối.")
+        elif v["ly_do_tu_choi"] == q.LD_KHAC and not v["ly_do_chi_tiet"]:
+            loi.append("Lý do từ chối là Khác: ghi rõ lý do vào ô bên dưới.")
     else:
         v["ly_do_tu_choi"] = ""
+    if v["ly_do_tu_choi"] != q.LD_KHAC:
+        v["ly_do_chi_tiet"] = ""
     if tt in logic.KHONG_HEN_LAI or v["hen_lai_sau"] not in logic.HEN_LAI_SAU:
         v["hen_lai_sau"] = ""
     if tt == q.GOI_LAI and not v["hen_lai_sau"]:
