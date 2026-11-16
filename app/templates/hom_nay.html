@@ -1,12 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Hôm nay · Casa chăm sóc lead{% endblock %}
 {% block noi_dung %}
-<h1>Hôm nay <small>{{ ngay_vn(hom_nay) }}</small></h1>
+<h1>Hôm nay <small class="so">{{ ngay_vn(hom_nay) }}</small></h1>
 {% if not ds %}
-<p class="trong">Không còn phụ huynh nào cần liên hệ hôm nay. Xong việc!</p>
+<p class="trong">Không còn phụ huynh nào cần liên hệ hôm nay.</p>
 {% else %}
-<p class="nho">{{ ds|length }} phụ huynh, quá hạn lên đầu. Gọi xong bấm vào lead để ghi nhận.</p>
+{% set qua = ds|selectattr('khan', 'equalto', 'Quá hạn')|list|length %}
+<p class="mo-dau">{{ ds|length }} phụ huynh cần liên hệ{% if qua %}, <span class="so-do">{{ qua }} quá hạn</span>{% endif %}. Gọi xong, bấm vào tên để ghi nhận.</p>
 {% for lt in ds %}{% include "_the.html" %}{% endfor %}
 {% endif %}
-<a class="nut-noi" href="/lead-moi" aria-label="Thêm lead">+</a>
+<a class="nut-noi" href="/lead-moi" aria-label="Thêm lead"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
 {% endblock %}

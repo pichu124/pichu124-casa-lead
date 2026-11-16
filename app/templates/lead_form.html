@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ 'Sửa hồ sơ' if lead_id else 'Thêm lead' }} · Casa chăm sóc lead{% endblock %}
 {% block noi_dung %}
-<p><a href="{{ '/lead/%d' % lead_id if lead_id else '/cua-toi' }}">‹ Quay lại</a></p>
+<a class="quay-lai" href="{{ '/lead/%d' % lead_id if lead_id else '/cua-toi' }}">Quay lại</a>
 <h1>{{ 'Sửa hồ sơ' if lead_id else 'Thêm lead' }}</h1>
 {% for l in loi %}<p class="loi">{{ l }}</p>{% endfor %}
 <form class="hop bieu-mau" method="post" action="{{ '/lead/%d/sua' % lead_id if lead_id else '/lead-moi' }}">

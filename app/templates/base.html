@@ -3,32 +3,40 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#2f6f4f">
+<meta name="theme-color" content="#f5f2ec">
 <link rel="manifest" href="/static/manifest.json">
 <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/static/icon-192.png">
-<link rel="stylesheet" href="/static/app.css?v=3">
+<link rel="preload" href="/static/fonts/be-vietnam-pro-vietnamese-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/static/fonts/be-vietnam-pro-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/static/app.css?v=8">
 <title>{% block title %}Casa chăm sóc lead{% endblock %}</title>
 </head>
 <body>
 {% if nguoi %}
 <header class="dau">
-  <a class="ten-app" href="/hom-nay">Casa · Chăm sóc lead</a>
-  <span class="ai">{{ nguoi.ten }}</span>
+  <a class="thuong-hieu" href="/hom-nay"><span class="dau-an" aria-hidden="true">C</span><b>Casa</b><span>Chăm sóc lead</span></a>
+  <a class="ai" href="/tai-khoan" style="text-decoration:none"><span>{{ nguoi.ten }}</span><i aria-hidden="true">{{ (nguoi.ten or '?')[:1]|upper }}</i></a>
 </header>
 {% endif %}
 <main class="noi-dung">
 {% block noi_dung %}{% endblock %}
 </main>
 {% if nguoi %}
-<nav class="thanh-duoi">
-  <a href="/hom-nay" class="{{ 'dang' if request.url.path == '/hom-nay' }}">Hôm nay</a>
-  <a href="/cua-toi" class="{{ 'dang' if request.url.path == '/cua-toi' }}">Của tôi</a>
+{% set p = request.url.path %}
+<nav class="thanh-duoi" aria-label="Điều hướng">
+  <a href="/hom-nay" class="{{ 'dang' if p == '/hom-nay' }}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4M8.5 14.5l2.2 2.2 4.8-4.7"/></svg>Hôm nay</a>
+  <a href="/cua-toi" class="{{ 'dang' if p == '/cua-toi' }}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.8 19.5c.7-3.3 3.2-5.3 6.2-5.3s5.5 2 6.2 5.3"/><path d="M15.5 4.8a3.3 3.3 0 0 1 0 6.4M17.6 14.4c2 .7 3.3 2.5 3.7 5.1"/></svg>Của tôi</a>
   {% if nguoi.vai_tro == 'chu' %}
-  <a href="/tat-ca" class="{{ 'dang' if request.url.path == '/tat-ca' }}">Tất cả</a>
-  <a href="/chu" class="{{ 'dang' if request.url.path.startswith('/quan-tri') or request.url.path.startswith('/chu') }}">Quản trị</a>
+  <a href="/tat-ca" class="{{ 'dang' if p == '/tat-ca' }}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 6.5h12M8.5 12h12M8.5 17.5h12"/><circle cx="4.3" cy="6.5" r="1.1"/><circle cx="4.3" cy="12" r="1.1"/><circle cx="4.3" cy="17.5" r="1.1"/></svg>Tất cả</a>
+  <a href="/chu" class="{{ 'dang' if p.startswith('/quan-tri') or p.startswith('/chu') }}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Quản trị</a>
   {% endif %}
-  <a href="/tai-khoan" class="{{ 'dang' if request.url.path == '/tai-khoan' }}">Tài khoản</a>
+  <a href="/tai-khoan" class="{{ 'dang' if p == '/tai-khoan' }}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="10" r="3"/><path d="M6.6 18.4c1.2-2.1 3.1-3.2 5.4-3.2s4.2 1.1 5.4 3.2"/></svg>Tài khoản</a>
 </nav>
 {% endif %}
 <script src="/static/app.js?v=1"></script>

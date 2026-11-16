@@ -19,8 +19,8 @@
 {% if not nhom %}<p class="trong">Không có lead nào{% if tim %} khớp "{{ tim }}"{% endif %}.</p>{% endif %}
 {% set show_sale = ds_sale is defined %}
 {% for ten_nhom, ds in nhom %}
-<h2 class="nhom">{{ ten_nhom }} <small>{{ ds|length }}</small></h2>
+<h2 class="nhom">{{ ten_nhom.split(' · ', 1)[-1] }} <small>{{ ds|length }}</small></h2>
 {% for lt in ds %}{% include "_the.html" %}{% endfor %}
 {% endfor %}
-<a class="nut-noi" href="/lead-moi" aria-label="Thêm lead">+</a>
+<a class="nut-noi" href="/lead-moi" aria-label="Thêm lead"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
 {% endblock %}

@@ -2,7 +2,9 @@
 {% block title %}Đăng nhập · Casa chăm sóc lead{% endblock %}
 {% block noi_dung %}
 <section class="hop dang-nhap">
-  <h1>Casa · Chăm sóc lead</h1>
+  <span class="dau-an" aria-hidden="true">C</span>
+  <p class="ten-truong">Casa dei Bambini</p>
+  <h1>Chăm sóc lead</h1>
   {% if loi %}<p class="loi">{{ loi }}</p>{% endif %}
   <form method="post" action="/dang-nhap">
     <input type="hidden" name="csrf" value="{{ csrf }}">
@@ -10,6 +12,6 @@
     <label>Mật khẩu <input name="mat_khau" type="password" autocomplete="current-password" required></label>
     <button class="chinh">Đăng nhập</button>
   </form>
-  <p class="nho">Quên mật khẩu thì nhờ chủ đặt lại.</p>
+  <p class="nho">Quên mật khẩu thì nhờ quản lý đặt lại.</p>
 </section>
 {% endblock %}

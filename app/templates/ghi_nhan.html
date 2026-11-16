@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Ghi nhận · {{ r.ten_ph }}{% endblock %}
 {% block noi_dung %}
-<p><a href="/lead/{{ r.id }}">‹ {{ r.ten_ph }}</a></p>
+<a class="quay-lai" href="/lead/{{ r.id }}">{{ r.ten_ph }}</a>
 <h1>{{ 'Sửa lần chăm sóc' if cs_id else 'Ghi nhận lần chăm sóc' }}</h1>
 {% for l in loi %}<p class="loi">{{ l }}</p>{% endfor %}
 <form class="hop bieu-mau" method="post" action="{{ '/cham-soc/%d/sua' % cs_id if cs_id else '/lead/%d/ghi-nhan' % r.id }}">

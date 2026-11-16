@@ -1,16 +1,18 @@
 {% extends "base.html" %}
 {% block title %}{{ r.ten_ph }} · Casa chăm sóc lead{% endblock %}
 {% block noi_dung %}
-<p><a href="javascript:history.back()">‹ Quay lại</a></p>
-<section class="hop">
-  <h1>{% if lt.khan == 'Quá hạn' %}⚠ {% endif %}{{ r.ten_ph }}</h1>
-  <p class="sdt">
-    <span>{{ r.sdt }}</span>
-    <a class="nut" href="tel:{{ r.sdt|replace(' ', '') }}">Gọi</a>
-    <a class="nut" href="sms:{{ r.sdt|replace(' ', '') }}">SMS</a>
-    <a class="nut" href="{{ zalo }}" target="_blank" rel="noopener">Zalo</a>
-  </p>
-  {% if lt.viec %}<p class="viec-lon">{{ lt.viec }}</p>{% endif %}
+<a class="quay-lai" href="javascript:history.back()">Quay lại</a>
+<section class="hop ho-so">
+  <h1>{{ r.ten_ph }}</h1>
+  <p class="phu-de">{% if r.ten_be %}bé {{ r.ten_be }}{% if r.tuoi_be %} · {{ r.tuoi_be }}{% endif %} · {% endif %}{{ r.co_so or 'chưa rõ cơ sở' }}
+    {% if lt.khan == 'Quá hạn' %}<span class="nhan nhan-qua">Quá hạn {{ lt.so_ngay_qua_han }} ngày</span>{% elif lt.khan == 'Hôm nay' %}<span class="nhan nhan-nay">Hôm nay</span>{% endif %}</p>
+  <p class="sdt-so">{{ r.sdt }}</p>
+  <div class="goi">
+    <a class="nut" href="tel:{{ r.sdt|replace(' ', '') }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h3.5l1.8 4.4-2.2 1.4a11 11 0 0 0 6.1 6.1l1.4-2.2L20 15.5V19a1.5 1.5 0 0 1-1.6 1.5C10.6 20 4 13.4 3.5 5.6A1.5 1.5 0 0 1 5 4z"/></svg>Gọi</a>
+    <a class="nut" href="sms:{{ r.sdt|replace(' ', '') }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h16v10H9l-5 4z"/></svg>SMS</a>
+    <a class="nut" href="{{ zalo }}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="11.5" r="8"/><path d="M8.5 9h6.5l-6.5 6h6.5"/></svg>Zalo</a>
+  </div>
+  {% if lt.viec %}<p class="viec-lon"><small>Việc cần làm{% if lt.han %} · hạn {{ ngay_vn(lt.han) }}{% endif %}</small>{{ lt.viec }}</p>{% endif %}
   <dl class="bang">
     <dt>Giai đoạn</dt><dd>{{ lt.giai_doan }}</dd>
     <dt>Hạn liên hệ</dt><dd>{% if lt.han %}{{ ngay_vn(lt.han) }} · {{ lt.khan }}{% if lt.so_ngay_qua_han %} ({{ lt.so_ngay_qua_han }} ngày){% endif %}{% else %}Không nhắc{% endif %}</dd>
