@@ -55,3 +55,4 @@ label.chon input { width: 20px; height: 20px; }
 .dong-chon { display: flex; gap: 10px; align-items: flex-start; } .dong-chon input { width: 22px; height: 22px; margin-top: 2px; flex: none; }
 .nhan { display: inline-block; background: #fff4e5; color: var(--cam); border-radius: 6px; padding: 0 6px; font-size: 13px; margin-left: 4px; }
 .trong-dong { display: inline; margin-left: 8px; } .trong-dong button { padding: 2px 10px; font-size: 14px; }
+.bang-so th, .bang-so td:first-child { white-space: nowrap; } .bang-so td .nho { font-size: 12px; }

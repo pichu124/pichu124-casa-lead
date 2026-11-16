@@ -5,7 +5,7 @@
 <h1>Theo sale</h1>
 <div class="cuon-ngang">
 <table class="bang-so">
-  <thead><tr><th>Người</th><th>Lead</th><th>Đang chăm sóc</th><th>Quá hạn</th><th>Đã chốt</th><th>Tỷ lệ chốt</th><th>Liên hệ hôm nay</th><th>Tổng lần liên hệ</th></tr></thead>
+  <thead><tr><th>Người</th><th>Lead</th><th>Đang</th><th>Quá hạn</th><th>Chốt</th><th>Tỷ lệ</th><th>Hôm nay</th><th>Tổng LH</th></tr></thead>
   <tbody>
   {% for h in hang %}
   <tr><td>{{ h.ten }}{% if h.co_so %}<div class="nho">{{ h.co_so }}</div>{% endif %}</td><td>{{ h.tong }}</td><td>{{ h.dang }}</td>
@@ -14,5 +14,6 @@
   </tbody>
 </table>
 </div>
-<p class="nho">Tỷ lệ chốt = lead đã đặt cọc hoặc nhập học trên tổng lead đang giao cho người đó.</p>
+<p class="nho">Đang: lead đang chăm sóc. Chốt: đã đặt cọc và gửi thư mời, hoặc đã nhập học. Tỷ lệ: chốt trên tổng lead đang giao.
+  Hôm nay / Tổng LH: số lần ghi nhận chăm sóc hôm nay / từ trước tới giờ.</p>
 {% endblock %}
