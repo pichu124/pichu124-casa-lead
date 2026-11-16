@@ -593,7 +593,9 @@ def tai_khoan(request: Request, ma: str = "", tb: str = ""):
     conn = _conn()
     try:
         nguoi = _nguoi(request, conn)
-        return _ve(request, "tai_khoan.html", nguoi, ma=ma, tb=tb, tg_cau_hinh=telegram.da_cau_hinh())
+        # mã đang chờ lấy từ cơ sở dữ liệu, để link vẫn hiện sau khi bấm kiểm tra mà chưa thấy tin
+        return _ve(request, "tai_khoan.html", nguoi, ma=nguoi["telegram_ma"] or "", tb=tb,
+                   tg_cau_hinh=telegram.da_cau_hinh())
     finally:
         conn.close()
 
@@ -628,8 +630,8 @@ async def noi_telegram(request: Request):
     conn = _conn()
     try:
         nguoi = _nguoi(request, conn)
-        ma = telegram.tao_ma_noi(conn, nguoi["id"])
-        return _ve_lai("/tai-khoan?" + urlencode({"ma": ma}))
+        telegram.tao_ma_noi(conn, nguoi["id"])
+        return _ve_lai("/tai-khoan")
     finally:
         conn.close()
 
@@ -651,7 +653,8 @@ async def kiem_tra_telegram(request: Request):
         await run_in_threadpool(_doc_telegram)
         r = conn.execute("SELECT telegram_chat_id FROM nguoi_dung WHERE id = ?", (nguoi["id"],)).fetchone()
         tb = ("Đã nối Telegram." if r["telegram_chat_id"] else
-              "Chưa thấy tin của bạn. Mở đường link, bấm Bắt đầu (Start) trong Telegram rồi bấm kiểm tra lại.")
+              "Chưa thấy tin của bạn. Mở đường link, bấm Bắt đầu (Start) trong Telegram, chờ bot trả lời rồi bấm "
+              "kiểm tra lại. Tin có biểu tượng đồng hồ nghĩa là Telegram chưa gửi được: thử bật VPN hoặc đổi mạng.")
         return _ve_lai("/tai-khoan?" + urlencode({"tb": tb}))
     finally:
         conn.close()

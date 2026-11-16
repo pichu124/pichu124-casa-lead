@@ -98,10 +98,19 @@ def _lay_cap_nhat(conn: sqlite3.Connection) -> list[dict]:
 
 
 def tao_ma_noi(conn: sqlite3.Connection, nguoi_id: int) -> str:
+    """Mã nối Telegram của người này. Đã có mã chưa dùng thì giữ nguyên (bấm Nối lần nữa không làm hỏng
+    tin /start đang trên đường tới)."""
+    r = conn.execute("SELECT telegram_ma FROM nguoi_dung WHERE id = ?", (nguoi_id,)).fetchone()
+    if r and r[0]:
+        return r[0]
     ma = secrets.token_hex(8)
     conn.execute("UPDATE nguoi_dung SET telegram_ma = ? WHERE id = ?", (ma, nguoi_id))
     conn.commit()
     return ma
+
+
+HUONG_DAN = ("Chào bạn. Để nhận tin nhắc, mở app Casa chăm sóc lead → Tài khoản → Nối Telegram, "
+             "rồi bấm đường link trên màn hình (hoặc gửi cho bot mã 16 ký tự hiện trên màn hình).")
 
 
 def xu_ly_cap_nhat(conn: sqlite3.Connection, cap_nhat: list[dict] | None = None) -> int:
@@ -110,17 +119,19 @@ def xu_ly_cap_nhat(conn: sqlite3.Connection, cap_nhat: list[dict] | None = None)
     so = 0
     for u in ds:
         m = u.get("message") or {}
+        chat_obj = m.get("chat") or {}
+        chat = str(chat_obj.get("id", ""))
         chu = (m.get("text") or "").strip()
-        if not chu.startswith("/start "):
+        if not chat or not chu or chat_obj.get("type", "private") != "private":
             continue
-        ma = chu.split(maxsplit=1)[1].strip()
-        chat = str((m.get("chat") or {}).get("id", ""))
-        if not ma or not chat:
-            continue
+        # "/start <mã>" từ đường link, hoặc người dùng tự gửi mã
+        ma = chu.split(maxsplit=1)[1].strip() if chu.startswith("/start ") else chu
         cur = conn.execute("UPDATE nguoi_dung SET telegram_chat_id = ?, telegram_ma = NULL WHERE telegram_ma = ?",
-                           (chat, ma))
-        if cur.rowcount:
+                           (chat, ma)) if re.fullmatch(r"[0-9a-f]{16}", ma) else None
+        if cur is not None and cur.rowcount:
             so += 1
             gui_tin(chat, "Đã nối Telegram với app Casa chăm sóc lead. Mỗi sáng ngày làm việc bạn sẽ nhận danh sách cần liên hệ ở đây.")
+        else:
+            gui_tin(chat, HUONG_DAN)
     conn.commit()
     return so

@@ -357,3 +357,31 @@ def test_an_sdt_dau_tru_toan_hoc():
 
 def test_healthz_nhan_ca_head(du_lieu):
     assert TestClient(app).head("/healthz").status_code == 200  # curl -I, dịch vụ theo dõi dùng HEAD
+
+
+def test_noi_telegram_link_van_hien_sau_khi_kiem_tra_chua_thay(du_lieu, monkeypatch):
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "x")
+    monkeypatch.setenv("TELEGRAM_BOT_USERNAME", "casa_lead_bot")
+    monkeypatch.setattr(telegram, "_lay_cap_nhat", lambda conn: [])
+    c = dang_nhap("sale2")
+    c.post("/tai-khoan/telegram", data={"csrf": csrf(c, "/tai-khoan")})
+    ma = db.ket_noi().execute("SELECT telegram_ma FROM nguoi_dung WHERE ten_dang_nhap = 'sale2'").fetchone()[0]
+    r = c.post("/tai-khoan/telegram/kiem-tra", data={"csrf": csrf(c, "/tai-khoan")})
+    assert "Chưa thấy tin" in r.text and f"start={ma}" in r.text and ma in r.text
+    c.post("/tai-khoan/telegram", data={"csrf": csrf(c, "/tai-khoan")})  # bấm Nối lần nữa: giữ mã cũ
+    assert db.ket_noi().execute("SELECT telegram_ma FROM nguoi_dung WHERE ten_dang_nhap = 'sale2'").fetchone()[0] == ma
+
+
+def test_noi_telegram_bang_cach_gui_ma_va_tra_loi_khi_thieu_ma(du_lieu):
+    conn = db.ket_noi()
+    uid = conn.execute("SELECT id FROM nguoi_dung WHERE ten_dang_nhap = 'sale2'").fetchone()[0]
+    ma = telegram.tao_ma_noi(conn, uid)
+    so = telegram.xu_ly_cap_nhat(conn, [
+        {"update_id": 1, "message": {"text": "/start", "chat": {"id": 7, "type": "private"}}},
+        {"update_id": 2, "message": {"text": "abc", "chat": {"id": 8, "type": "private"}}},
+        {"update_id": 3, "message": {"text": f" {ma} ", "chat": {"id": 42, "type": "private"}}}])
+    assert so == 1
+    assert conn.execute("SELECT telegram_chat_id FROM nguoi_dung WHERE id = ?", (uid,)).fetchone()[0] == "42"
+    nhan = {chat for chat, _ in du_lieu}
+    assert {"7", "8", "42"} <= nhan  # người gửi sai / thiếu mã cũng được hướng dẫn
+    assert "mã" in next(t for chat, t in du_lieu if chat == "7")
