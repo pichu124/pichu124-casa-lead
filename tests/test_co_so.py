@@ -49,3 +49,19 @@ def test_doan_nhieu_co_so_tu_messenger():
     ds = ["Chùa Láng", "Mỹ Đình", "Kim Mã"]
     assert messenger.doan_co_so("Mỹ Đình hoặc Kim Mã đều được", ds) == "Mỹ Đình, Kim Mã"
     assert messenger.doan_co_so("cơ sở nào gần Cầu Giấy", ds) == ""
+
+
+def test_quan_tam_khac_go_tay(du_lieu):
+    c = dang_nhap("sale1")
+    r = c.post("/lead-moi", data={"csrf": csrf(c, "/lead-moi"), "ten_ph": "Khác Thử", "sdt": "0912000003",
+                                  "ph_quan_tam": ["Học phí", "Khác"], "ph_quan_tam_khac": "Bán trú, thêm, giờ"},
+               follow_redirects=False)
+    assert r.status_code == 303
+    assert _lead("Khác Thử")["ph_quan_tam"] == "Học phí, Khác: Bán trú; thêm; giờ"
+    form = c.get(f"/lead/{_lead('Khác Thử')['id']}/sua").text
+    assert re.search(r'name="ph_quan_tam" value="Khác"[^>]*checked', form)
+    assert 'name="ph_quan_tam_khac" value="Bán trú; thêm; giờ"' in form and "(đã bỏ)" not in form
+    # bỏ tích Khác thì chữ gõ tay không được lưu
+    c.post(f"/lead/{_lead('Khác Thử')['id']}/sua", data={"csrf": csrf(c, "/lead-moi"), "ten_ph": "Khác Thử",
+           "sdt": "0912000003", "ph_quan_tam": ["Học phí"], "ph_quan_tam_khac": "còn sót"})
+    assert _lead("Khác Thử")["ph_quan_tam"] == "Học phí"

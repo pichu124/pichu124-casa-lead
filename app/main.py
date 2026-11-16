@@ -45,7 +45,7 @@ app.add_middleware(
 )
 app.mount("/static", StaticFiles(directory=THU_MUC / "static"), name="static")
 tpl = Jinja2Templates(directory=THU_MUC / "templates")
-tpl.env.globals.update(ngay_vn=dongho.ngay_vn, gio_vn=dongho.gio_vn, doc_gio=dongho.doc_gio,
+tpl.env.globals.update(tach_khac=lambda s: tach_khac(s), ngay_vn=dongho.ngay_vn, gio_vn=dongho.gio_vn, doc_gio=dongho.doc_gio,
                        doc_ngay=dongho.doc_ngay, q=q, ten_bot=telegram.ten_bot)
 
 
@@ -274,7 +274,7 @@ def chi_tiet(request: Request, lead_id: int):
 def _gia_tri_lead(form, nguoi: sqlite3.Row, cu: sqlite3.Row | None) -> tuple[dict, list[str]]:
     v = {k: _chu_nhan(form, k) for k in ("ten_ph", "sdt", "ten_be", "tuoi_be", "nguon", "chien_dich",
                                          "chat_luong", "ly_do_chat_luong", "ghi_chu", "em_nho")}
-    v["ph_quan_tam"] = ", ".join(x for x in form.getlist("ph_quan_tam") if x)
+    v["ph_quan_tam"] = _quan_tam_nhap(form)
     v["co_so"] = _co_so_nhap(form.getlist("co_so"))
     loi: list[str] = []
     v["ngay_sinh_be"] = _ngay_nhap(form, "ngay_sinh_be", loi, "Ngày sinh bé")
@@ -302,6 +302,36 @@ def _gia_tri_lead(form, nguoi: sqlite3.Row, cu: sqlite3.Row | None) -> tuple[dic
         v["sale_id"] = cu["sale_id"] if cu else nguoi["id"]
         v["tam_dung"] = cu["tam_dung"] if cu else 0
     return v, loi
+
+
+KHAC = "Khác"
+
+
+def tach_khac(s: str | None) -> tuple[list[str], str]:
+    """"Học phí, Khác: bán trú" → (["Học phí", "Khác"], "bán trú"): để biểu mẫu tích lại ô Khác và điền chữ gõ."""
+    chon, khac = [], ""
+    for x in (s or "").split(", "):
+        if x.startswith(f"{KHAC}: "):
+            chon.append(KHAC)
+            khac = x[len(KHAC) + 2:]
+        elif x:
+            chon.append(x)
+    return chon, khac
+
+
+
+def _quan_tam_nhap(form) -> str:
+    """Các mối quan tâm đã tích. Tích "Khác" và gõ thêm thì lưu "Khác: <chữ gõ>" (dấu phẩy đổi thành chấm phẩy để
+    không lẫn với dấu ngăn các lựa chọn). Không tích "Khác" thì bỏ chữ gõ tay."""
+    khac = _chu_nhan(form, "ph_quan_tam_khac").replace(",", ";").strip()
+    chon = []
+    for x in form.getlist("ph_quan_tam"):
+        x = (x or "").strip()
+        if x == KHAC and khac:
+            x = f"{KHAC}: {khac}"
+        if x and x not in chon:
+            chon.append(x)
+    return ", ".join(chon)
 
 
 def _co_so_nhap(chon: list[str]) -> str:

@@ -25,9 +25,11 @@
       {% if v.nguon and v.nguon not in ds_nguon %}<option value="{{ v.nguon }}" selected>{{ v.nguon }} (đã bỏ)</option>{% endif %}</select></label>
   <label>Chiến dịch / quảng cáo <input name="chien_dich" value="{{ v.chien_dich or '' }}"></label>
   <fieldset><legend>Phụ huynh quan tâm</legend>
-    {% set da_chon = (v.ph_quan_tam or '').split(', ') %}
-    {% for c in ds_quan_tam %}<label class="chon"><input type="checkbox" name="ph_quan_tam" value="{{ c }}" {{ 'checked' if c in da_chon }}> {{ c }}</label>{% endfor %}
+    {% set da_chon, khac_go = tach_khac(v.ph_quan_tam) %}
+    {% for c in ds_quan_tam %}<label class="chon"><input type="checkbox" name="ph_quan_tam" value="{{ c }}" data-dieu-khien="ph_quan_tam" {{ 'checked' if c in da_chon }}> {{ c }}</label>{% endfor %}
     {% for c in da_chon if c and c not in ds_quan_tam %}<label class="chon"><input type="checkbox" name="ph_quan_tam" value="{{ c }}" checked> {{ c }} (đã bỏ)</label>{% endfor %}
+    <label data-hien-khi="ph_quan_tam=Khác">Quan tâm khác (gõ tay)
+      <input name="ph_quan_tam_khac" value="{{ khac_go }}" placeholder="vd Bán trú, học bơi, giờ đón muộn"></label>
   </fieldset>
   {% if nguoi.vai_tro == 'chu' %}
   <label>Sale phụ trách
