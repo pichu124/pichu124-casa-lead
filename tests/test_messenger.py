@@ -241,3 +241,17 @@ def test_tat_ca_nhac_messenger_chua_nhan(sheet):
     messenger.dong_bo(db.ket_noi())
     r = dang_nhap("chu").get("/tat-ca")
     assert "2 phụ huynh Messenger chưa nhận" in r.text and 'href="/chu/messenger"' in r.text
+
+
+def test_ghi_chu_cua_bot_hien_va_dien_san_khi_giao(sheet):
+    hang, _ = sheet
+    hang[0].update(bot_summary="Phụ huynh hỏi học phí lớp 3 tuổi; bot đã gửi bảng học phí, hẹn tư vấn viên báo giá xe.",
+                   media_sent="Học phí hệ Quốc tế (cơ sở Mỹ Đình) 03/11 · Thời khoá biểu cơ sở Mỹ Đình 03/11")
+    c = dang_nhap("chu")
+    ds = c.get("/chu/messenger").text
+    assert "Bot đã tư vấn" in ds and "hẹn tư vấn viên báo giá xe" in ds
+    assert "Bot đã gửi" in ds and "Thời khoá biểu cơ sở Mỹ Đình 03/11" in ds
+    form = c.get("/lead-moi?messenger=1001").text
+    ghi_chu = re.search(r'<textarea name="ghi_chu"[^>]*>(.*?)</textarea>', form, re.S).group(1)
+    assert ghi_chu.startswith("Bot đã tư vấn: Phụ huynh hỏi học phí lớp 3 tuổi")
+    assert "Bot đã gửi: Học phí hệ Quốc tế (cơ sở Mỹ Đình) 03/11" in ghi_chu

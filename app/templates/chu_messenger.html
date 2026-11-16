@@ -23,6 +23,10 @@
   <div class="nho">{{ h.stage or h.event }}{% if h.ad_title %} · quảng cáo: {{ h.ad_title }}{% endif %}{% if h.page %} · {{ h.page }}{% endif %}
     {% if h.cap_nhat_vn %} · cập nhật {{ h.cap_nhat_vn }}{% endif %}</div>
   {% if h.visit_request %}<div class="nho">Hẹn: {{ h.visit_request }}</div>{% endif %}
+  {% if h.bot_summary or h.media_sent %}<dl class="bang ghi-chu-bot">
+    {% if h.bot_summary %}<dt>Bot đã tư vấn</dt><dd>{{ h.bot_summary }}</dd>{% endif %}
+    {% if h.media_sent %}<dt>Bot đã gửi</dt><dd>{{ h.media_sent }}</dd>{% endif %}
+  </dl>{% endif %}
   {% if h.last_message %}<div class="ghi-chu">{{ h.last_message[:300] }}</div>{% endif %}
   {% if h.trung %}<p class="loi">Trùng SĐT với: {% for r in h.trung %}<a href="/lead/{{ r.id }}">{{ r.ten_ph }}</a> (sale {{ r.ten_sale or 'chưa giao' }}){{ ', ' if not loop.last }}{% endfor %}.
     Nếu là cùng phụ huynh thì không cần giao lại: bấm Bỏ qua.</p>{% endif %}

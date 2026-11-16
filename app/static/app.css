@@ -241,3 +241,4 @@ details[open] > summary { margin-bottom: 12px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 .cuon-ngang + .nho, .bang-so + .nho { margin-top: 10px; }
+.ghi-chu-bot { margin: 10px 0 0; padding: 10px 12px; background: var(--nen); border-radius: var(--bo-nho); font-size: 14px; grid-template-columns: max-content 1fr; }

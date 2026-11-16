@@ -169,6 +169,11 @@ def doan_co_so(chu: str, ds_co_so: list[str]) -> str:
 def dien_san(h: dict, ds_co_so: list[str], ds_nguon: list[str]) -> dict:
     """Giá trị điền sẵn cho biểu mẫu Thêm lead từ một hàng Messenger."""
     ghi = []
+    # Ghi chú của bot lên đầu: sale đọc trước khi gọi để không hỏi lại, không nói khác bot
+    if h.get("bot_summary"):
+        ghi.append(f"Bot đã tư vấn: {h['bot_summary']}")
+    if h.get("media_sent"):
+        ghi.append(f"Bot đã gửi: {h['media_sent']}")
     lan_dau = h.get("first_contact") or h.get("time") or ""
     if lan_dau:
         try:
