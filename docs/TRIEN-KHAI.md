@@ -210,6 +210,22 @@ cp /tmp/khoi-phuc/<tên bản> /var/lib/casa-lead/casa-lead.db && chmod 600 /var
 sudo systemctl start casa-lead
 ```
 
+## 5b. Đọc lead Messenger từ Sheet của bot
+
+App đọc tab `Leads` qua chính web app Apps Script mà bot dùng để ghi, bằng một **token đọc riêng** (token ghi của bot không đọc được). Không cần Google Cloud.
+
+1. Trong Apps Script của Sheet: dán script mới và thêm Script Property `LEADS_READ_TOKEN`, theo repo bot `docs/google-sheet-leads.md` **mục 9**. Deploy **New version** (URL web app giữ nguyên).
+2. Trên VPS, thêm hai dòng vào `/etc/casa-lead.env` (`sudo nano /etc/casa-lead.env`):
+
+   ```
+   LEADS_SHEET_WEBHOOK_URL=<URL web app, giống biến cùng tên của bot trên Render>
+   LEADS_READ_TOKEN=<đúng chuỗi đã đặt cho LEADS_READ_TOKEN ở bước 1>
+   ```
+
+3. `sudo systemctl restart casa-lead`, mở **Quản trị → Messenger chưa nhận**: phải thấy các phụ huynh đã để SĐT cho bot. Lỗi thì màn hình in lý do (sai token, script cũ…).
+
+App lấy lại tab Leads mỗi khi chủ mở màn này (cách nhau ít nhất 1 phút) và trước tin nhắc 8:00. Không ghi gì vào Sheet.
+
 ## 6. Dùng thử
 
 Mở https://casa-lead.duckdns.org trên điện thoại, đăng nhập tài khoản chủ.

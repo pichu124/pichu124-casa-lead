@@ -20,7 +20,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import auth, db, dongho, logic, quy_tac_nhac as q, telegram
+from . import auth, db, dongho, logic, messenger as messenger_mod, quy_tac_nhac as q, telegram
 
 log = logging.getLogger("casa_lead")
 THU_MUC = Path(__file__).resolve().parent
@@ -313,11 +313,17 @@ def _ve_form_lead(request, conn, nguoi, v, loi, lead_id=None, status_code=200):
 
 
 @app.get("/lead-moi", response_class=HTMLResponse)
-def lead_moi_trang(request: Request, em_cua: int = 0):
+def lead_moi_trang(request: Request, em_cua: int = 0, messenger: str = ""):
     conn = _conn()
     try:
         nguoi = _nguoi(request, conn)
         v = {"sale_id": nguoi["id"], "tam_dung": 0}
+        if messenger:  # chủ bấm Giao lead ở màn Messenger chưa nhận
+            _chu(nguoi)
+            h = messenger_mod.mot_hang(conn, messenger)
+            if h is None:
+                raise KhongThay()
+            v.update(messenger_mod.dien_san(h, db.danh_muc(conn, "Cơ sở"), db.danh_muc(conn, "Nguồn")), sale_id=None)
         if em_cua:
             anh = logic.mot_lead(conn, nguoi, em_cua)
             if anh is None:
@@ -337,6 +343,13 @@ async def lead_moi(request: Request):
     try:
         nguoi = _nguoi(request, conn)
         v, loi = _gia_tri_lead(form, nguoi, None)
+        cid = _chu_nhan(form, "customer_id")
+        # Customer ID chỉ nhận từ chủ, và chỉ khi đúng là một hàng Messenger đã đồng bộ (không tin biểu mẫu)
+        if cid and nguoi["vai_tro"] == "chu" and messenger_mod.mot_hang(conn, cid) is not None:
+            v["customer_id"] = cid
+            da = conn.execute("SELECT id FROM lead WHERE customer_id = ?", (cid,)).fetchone()
+            if da:
+                loi.append(f"Phụ huynh Messenger này đã được giao (lead #{da['id']}). Mở Tất cả để xem.")
         if loi:
             return _ve_form_lead(request, conn, nguoi, v, loi, status_code=400)
         trung = _trung_can_bao(conn, v)

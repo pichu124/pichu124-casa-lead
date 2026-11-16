@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Messenger chưa nhận · Casa chăm sóc lead{% endblock %}
+{% block noi_dung %}
+<p><a href="/chu">‹ Quản trị</a></p>
+<h1>Messenger chưa nhận <small>{{ ds|length }} phụ huynh</small></h1>
+<p class="nho">Phụ huynh đã để SĐT cho bot Messenger mà chưa có hồ sơ trong app. Bấm <strong>Giao lead</strong>, chọn sale rồi Lưu.
+  Giao xong nhớ reply <code>/xong</code> vào thẻ 📞 của phụ huynh trên nhóm Telegram của bot, để bot thôi nhắc.</p>
+{% if tb %}<p class="thong-bao">{{ tb }}</p>{% endif %}
+{% if not cau_hinh %}
+<p class="loi">Chưa cấu hình đọc Sheet của bot (LEADS_SHEET_WEBHOOK_URL, LEADS_READ_TOKEN trong /etc/casa-lead.env). Xem docs/TRIEN-KHAI.md.</p>
+{% else %}
+{% if loi %}<p class="loi">Lần lấy gần nhất bị lỗi: {{ loi }}. Danh sách dưới là dữ liệu lần lấy được trước đó.</p>{% endif %}
+<form method="post" action="/chu/messenger/lay" class="nhac">
+  <input type="hidden" name="csrf" value="{{ csrf }}"><button>Lấy lại từ Sheet</button>
+  {% if lay_luc %}<span class="nho">Lấy lúc {{ lay_luc }}</span>{% endif %}
+</form>
+{% endif %}
+{% if cau_hinh and not ds %}<p class="trong">Không có phụ huynh Messenger nào chờ giao.</p>{% endif %}
+{% for h in ds %}
+<section class="hop">
+  <strong>{{ h.fb_name }}</strong>{% if h.kid_name %} · bé {{ h.kid_name }}{% endif %}{% if h.kid_age %} · {{ h.kid_age }}{% endif %}
+  <div>{{ h.phone }}{% if h.campus %} · {{ h.campus }}{% endif %}{% if h.area %} · {{ h.area }}{% endif %}</div>
+  <div class="nho">{{ h.stage or h.event }}{% if h.ad_title %} · quảng cáo: {{ h.ad_title }}{% endif %}{% if h.page %} · {{ h.page }}{% endif %}
+    {% if h.updated_at or h.time %} · cập nhật {{ (h.updated_at or h.time)[:16] }}{% endif %}</div>
+  {% if h.visit_request %}<div class="nho">Hẹn: {{ h.visit_request }}</div>{% endif %}
+  {% if h.last_message %}<div class="ghi-chu">{{ h.last_message[:300] }}</div>{% endif %}
+  {% if h.trung %}<p class="loi">Trùng SĐT với: {% for r in h.trung %}<a href="/lead/{{ r.id }}">{{ r.ten_ph }}</a> (sale {{ r.ten_sale or 'chưa giao' }}){{ ', ' if not loop.last }}{% endfor %}.
+    Nếu là cùng phụ huynh thì không cần giao lại: bấm Bỏ qua.</p>{% endif %}
+  <div class="hang-nut">
+    <a class="nut chinh" href="/lead-moi?messenger={{ h.customer_id|urlencode }}">Giao lead</a>
+    <form method="post" action="/chu/messenger/bo-qua" onsubmit="return confirm('Bỏ qua phụ huynh này (không phải lead, hoặc đã có hồ sơ)?')">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="customer_id" value="{{ h.customer_id }}">
+      <button>Bỏ qua</button></form>
+  </div>
+</section>
+{% endfor %}
+{% endblock %}

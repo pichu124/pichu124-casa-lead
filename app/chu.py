@@ -18,7 +18,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, Response
 from starlette.concurrency import run_in_threadpool
 
-from . import db, dongho, logic, quy_tac_nhac as q, telegram
+from . import db, dongho, logic, messenger, quy_tac_nhac as q, telegram
 from .main import KhongThay, _bieu_mau, _chu, _conn, _doc_telegram, _ngay_nhap, _nguoi, _ve, _ve_lai
 
 router = APIRouter(prefix="/chu")
@@ -37,7 +37,62 @@ def trang_chu(request: Request):
         nguoi = _nguoi(request, conn)
         _chu(nguoi)
         so = sum(q.bo_quen(lt.giai_doan, lt.khan) for lt in _tat_ca(conn, nguoi))
-        return _ve(request, "chu.html", nguoi, so_bo_quen=so)
+        return _ve(request, "chu.html", nguoi, so_bo_quen=so, so_messenger=len(messenger.chua_nhan(conn)),
+                   messenger_cau_hinh=messenger.da_cau_hinh())
+    finally:
+        conn.close()
+
+
+# ------------------------------------------------------------------ lead Messenger chưa nhận
+
+def _dong_bo(bat_buoc: bool) -> None:
+    """Gọi Sheet ngoài vòng sự kiện (có thể mất vài giây), bằng kết nối riêng."""
+    conn = _conn()
+    try:
+        messenger.dong_bo(conn) if bat_buoc else messenger.dong_bo_neu_cu(conn)
+    finally:
+        conn.close()
+
+
+@router.get("/messenger", response_class=HTMLResponse)
+async def ds_messenger(request: Request, tb: str = ""):
+    conn = _conn()
+    try:
+        nguoi = _nguoi(request, conn)
+        _chu(nguoi)
+        if messenger.da_cau_hinh():
+            await run_in_threadpool(_dong_bo, False)
+        lay = db.lay_he_thong(conn, "messenger_lay_luc")
+        return _ve(request, "chu_messenger.html", nguoi, ds=messenger.chua_nhan(conn), tb=tb,
+                   cau_hinh=messenger.da_cau_hinh(), loi=db.lay_he_thong(conn, "messenger_loi"),
+                   lay_luc=dongho.gio_vn(dongho.doc_gio(lay)) if lay else "")
+    finally:
+        conn.close()
+
+
+@router.post("/messenger/lay")
+async def lay_messenger(request: Request):
+    await _bieu_mau(request)
+    conn = _conn()
+    try:
+        _chu(_nguoi(request, conn))
+    finally:
+        conn.close()
+    await run_in_threadpool(_dong_bo, True)
+    return _ve_lai("/chu/messenger")
+
+
+@router.post("/messenger/bo-qua")
+async def bo_qua_messenger(request: Request):
+    form = await _bieu_mau(request)
+    conn = _conn()
+    try:
+        nguoi = _nguoi(request, conn)
+        _chu(nguoi)
+        conn.execute("UPDATE messenger SET bo_qua = 1, bo_qua_boi = ?, bo_qua_luc = ? WHERE customer_id = ?",
+                     (nguoi["id"], dongho.ghi_gio(dongho.bay_gio()), form.get("customer_id") or ""))
+        conn.commit()
+        return _ve_lai("/chu/messenger?" + urlencode({"tb": "Đã bỏ qua: phụ huynh này không hiện trong danh sách nữa."}))
     finally:
         conn.close()
 

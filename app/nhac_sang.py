@@ -17,7 +17,7 @@ import sqlite3
 import sys
 from datetime import date
 
-from . import db, dongho, logic, quy_tac_nhac as q, telegram
+from . import db, dongho, logic, messenger, quy_tac_nhac as q, telegram
 
 log = logging.getLogger("casa_lead.nhac_sang")
 
@@ -50,6 +50,8 @@ def tin_cho_chu(conn: sqlite3.Connection, chu: sqlite3.Row, hom_nay: date) -> st
     dong += [f"- {lt.row['ten_ph']} · sale {lt.row['ten_sale'] or 'chưa giao'} · nhận {dongho.doc_gio(lt.row['ngay_nhan']):%d/%m}"
              for lt in moi]
     dong += ["", f"Lead bỏ quên (đang chăm sóc mà quá hạn): {len(bo_quen)}"]
+    if messenger.da_cau_hinh():
+        dong += [f"Messenger chưa giao: {len(messenger.chua_nhan(conn))} (Quản trị → Messenger chưa nhận)"]
     return "\n".join(dong)
 
 
@@ -79,6 +81,8 @@ def tin_cho_nhom(conn: sqlite3.Connection, hom_nay: date) -> str:
         dong += [f"- {lt.row['ten_ph']} · sale {lt.row['ten_sale'] or 'chưa giao'} · nhận "
                  f"{dongho.doc_gio(lt.row['ngay_nhan']):%d/%m}" for lt in moi]
         dong += [f"Bỏ quên (đang chăm sóc mà quá hạn): {len(bo_quen)}"]
+        if messenger.da_cau_hinh():
+            dong += [f"Messenger chưa giao: {len(messenger.chua_nhan(conn))}"]
     url = os.environ.get("CASA_LEAD_URL", "")
     if url:
         dong += ["", url]
@@ -91,6 +95,8 @@ def chay(conn: sqlite3.Connection, hom_nay: date, thu: bool = False, gui=None) -
     gui = gui or telegram.gui_tin
     if q.la_ngay_nghi(hom_nay, logic.ngay_nghi(conn)):
         return []
+    if not thu:
+        messenger.dong_bo(conn)  # để số "Messenger chưa giao" là số mới nhất; lỗi thì dùng dữ liệu cũ
     nhom = db.lay_he_thong(conn, "telegram_nhom")
     if nhom:
         tin = tin_cho_nhom(conn, hom_nay)

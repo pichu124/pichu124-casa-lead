@@ -98,6 +98,15 @@ CREATE TABLE IF NOT EXISTS gui_thong_tin (
     nguoi_gui INTEGER REFERENCES nguoi_dung(id),
     ghi_chu TEXT NOT NULL DEFAULT ''
 );
+CREATE TABLE IF NOT EXISTS messenger (
+    customer_id TEXT PRIMARY KEY,
+    du_lieu TEXT NOT NULL,
+    cap_nhat_sheet TEXT NOT NULL DEFAULT '',
+    lay_luc TEXT NOT NULL,
+    bo_qua INTEGER NOT NULL DEFAULT 0,
+    bo_qua_boi INTEGER REFERENCES nguoi_dung(id),
+    bo_qua_luc TEXT
+);
 CREATE TABLE IF NOT EXISTS he_thong (
     khoa TEXT PRIMARY KEY,
     gia_tri TEXT NOT NULL

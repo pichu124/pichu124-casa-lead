@@ -6,6 +6,8 @@
 {% for l in loi %}<p class="loi">{{ l }}</p>{% endfor %}
 <form class="hop bieu-mau" method="post" action="{{ '/lead/%d/sua' % lead_id if lead_id else '/lead-moi' }}">
   <input type="hidden" name="csrf" value="{{ csrf }}">
+  {% if v.customer_id and not lead_id %}<input type="hidden" name="customer_id" value="{{ v.customer_id }}">
+  <p class="thong-bao">Lead từ Messenger: chọn <strong>Sale phụ trách</strong> rồi bấm Lưu. Sale được giao nhận tin Telegram.</p>{% endif %}
   <label>Tên phụ huynh * <input name="ten_ph" value="{{ v.ten_ph or '' }}" required></label>
   <label>SĐT * <input name="sdt" value="{{ v.sdt or '' }}" inputmode="tel" required></label>
   <label>Tên bé <input name="ten_be" value="{{ v.ten_be or '' }}"></label>
