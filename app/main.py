@@ -250,6 +250,15 @@ def tat_ca(request: Request, tim: str = "", sale: int = 0, co_so: str = ""):
         conn.close()
 
 
+def _gio_lay(conn) -> str:
+    """Lần lấy Sheet Messenger thành công gần nhất, dd/mm/yyyy hh:mm ("" khi chưa lấy)."""
+    lay = db.lay_he_thong(conn, "messenger_lay_luc").split(" #")[0]
+    try:
+        return dongho.gio_vn(dongho.doc_gio(lay)) if lay else ""
+    except ValueError:
+        return ""
+
+
 @app.get("/lead/{lead_id}", response_class=HTMLResponse)
 def chi_tiet(request: Request, lead_id: int):
     conn = _conn()
@@ -263,7 +272,10 @@ def chi_tiet(request: Request, lead_id: int):
         hien_tao_em = (r["em_nho"] in ("Có em nhỏ", "Sắp sinh em") and r["ngay_sinh_em"]
                        and not logic.co_lead_em(conn, r))
         hien_thu_moi = bool(lt.lan_cuoi) and lt.lan_cuoi["tinh_trang"] == q.DAT_COC and not lt.lan_cuoi["da_gui_thu_moi"]
-        return _ve(request, "lead.html", nguoi, lt=lt, r=r, ten_sale=ten_sale, hien_tao_em=hien_tao_em,
+        # Lead từ Messenger: bot đã nói gì, gửi gì, theo lần lấy Sheet gần nhất (không gọi Sheet khi mở hồ sơ)
+        bot = messenger_mod.mot_hang(conn, r["customer_id"]) if r["customer_id"] else None
+        return _ve(request, "lead.html", nguoi, lt=lt, r=r, ten_sale=ten_sale, hien_tao_em=hien_tao_em, bot=bot,
+                   bot_lay_luc=_gio_lay(conn) if bot else "",
                    hien_thu_moi=hien_thu_moi, zalo="https://zalo.me/" + logic.chu_so(r["sdt"]),
                    co_the_sua_cs=lambda c: nguoi["vai_tro"] == "chu" or c["sale_id"] == nguoi["id"])
     finally:

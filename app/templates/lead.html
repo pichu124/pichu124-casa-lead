@@ -33,6 +33,19 @@
   </div>
 </section>
 
+{% if r.customer_id %}
+<section class="hop">
+  <h2>Chatbot đã tư vấn</h2>
+  {% if bot and (bot.bot_summary or bot.media_sent) %}
+  <dl class="bang ghi-chu-bot">
+    {% if bot.bot_summary %}<dt>Bot đã tư vấn</dt><dd>{{ bot.bot_summary }}</dd>{% endif %}
+    {% if bot.media_sent %}<dt>Bot đã gửi</dt><dd>{{ bot.media_sent }}</dd>{% endif %}
+  </dl>
+  {% else %}<p class="trong">Bot chưa có tóm tắt cho phụ huynh này.</p>{% endif %}
+  <p class="nho">Đọc trước khi gọi để không hỏi lại, không nói khác bot. Theo Sheet của bot{% if bot_lay_luc %}, lấy lúc {{ bot_lay_luc }}{% endif %}; tự cập nhật mỗi sáng.</p>
+</section>
+{% endif %}
+
 <section class="hop">
   <h2>Bé và gia đình</h2>
   <dl class="bang">
@@ -49,7 +62,7 @@
     <dt>Nhận lead</dt><dd>{{ gio_vn(doc_gio(r.ngay_nhan)) }}</dd>
     {% if r.tam_dung %}<dt>Tạm dừng</dt><dd>Có (chủ đã dừng lead này)</dd>{% endif %}
   </dl>
-  {% if r.ghi_chu %}<p class="ghi-chu">{{ r.ghi_chu }}</p>{% endif %}
+  {% if r.ghi_chu %}<h3>Ghi chú</h3><p class="ghi-chu">{{ r.ghi_chu }}</p>{% endif %}
 </section>
 
 <section class="hop">
