@@ -234,3 +234,9 @@ def test_nhieu_hang_va_nhieu_lead_van_nhanh(sheet, monkeypatch):
     t = time.perf_counter()
     assert len(messenger.chua_nhan(conn)) == 800
     assert time.perf_counter() - t < 1.0
+
+
+def test_tat_ca_nhac_messenger_chua_nhan(sheet):
+    messenger.dong_bo(db.ket_noi())
+    r = dang_nhap("chu").get("/tat-ca")
+    assert "2 phụ huynh Messenger chưa nhận" in r.text and 'href="/chu/messenger"' in r.text

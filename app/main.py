@@ -243,6 +243,7 @@ def tat_ca(request: Request, tim: str = "", sale: int = 0, co_so: str = ""):
         ds_sale = list(conn.execute("SELECT id, ten FROM nguoi_dung WHERE dang_lam = 1 ORDER BY ten"))
         return _ve(request, "danh_sach.html", nguoi, nhom=_nhom(ds), tim=tim, tieu_de="Tất cả lead",
                    duong_dan="/tat-ca", tong=len(ds), ds_sale=ds_sale, sale=sale, co_so=co_so,
+                   so_messenger=messenger_mod.so_chua_nhan(conn),
                    ds_co_so=db.danh_muc(conn, "Cơ sở"))
     finally:
         conn.close()
