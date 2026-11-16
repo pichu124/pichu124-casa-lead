@@ -7,7 +7,7 @@
 <link rel="manifest" href="/static/manifest.json">
 <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/static/icon-192.png">
-<link rel="stylesheet" href="/static/app.css?v=1">
+<link rel="stylesheet" href="/static/app.css?v=2">
 <title>{% block title %}Casa chăm sóc lead{% endblock %}</title>
 </head>
 <body>
@@ -26,7 +26,7 @@
   <a href="/cua-toi" class="{{ 'dang' if request.url.path == '/cua-toi' }}">Của tôi</a>
   {% if nguoi.vai_tro == 'chu' %}
   <a href="/tat-ca" class="{{ 'dang' if request.url.path == '/tat-ca' }}">Tất cả</a>
-  <a href="/quan-tri/nguoi-dung" class="{{ 'dang' if request.url.path.startswith('/quan-tri') }}">Quản trị</a>
+  <a href="/chu" class="{{ 'dang' if request.url.path.startswith('/quan-tri') or request.url.path.startswith('/chu') }}">Quản trị</a>
   {% endif %}
   <a href="/tai-khoan" class="{{ 'dang' if request.url.path == '/tai-khoan' }}">Tài khoản</a>
 </nav>

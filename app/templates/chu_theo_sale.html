@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Theo sale · Casa chăm sóc lead{% endblock %}
+{% block noi_dung %}
+<p><a href="/chu">‹ Quản trị</a></p>
+<h1>Theo sale</h1>
+<div class="cuon-ngang">
+<table class="bang-so">
+  <thead><tr><th>Người</th><th>Lead</th><th>Đang chăm sóc</th><th>Quá hạn</th><th>Đã chốt</th><th>Tỷ lệ chốt</th><th>Liên hệ hôm nay</th><th>Tổng lần liên hệ</th></tr></thead>
+  <tbody>
+  {% for h in hang %}
+  <tr><td>{{ h.ten }}{% if h.co_so %}<div class="nho">{{ h.co_so }}</div>{% endif %}</td><td>{{ h.tong }}</td><td>{{ h.dang }}</td>
+      <td class="{{ 'so-do' if h.qua_han }}">{{ h.qua_han }}</td><td>{{ h.chot }}</td><td>{{ h.ty_le }}</td><td>{{ h.hom_nay }}</td><td>{{ h.so_cs }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="nho">Tỷ lệ chốt = lead đã đặt cọc hoặc nhập học trên tổng lead đang giao cho người đó.</p>
+{% endblock %}

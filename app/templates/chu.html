@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Quản trị · Casa chăm sóc lead{% endblock %}
+{% block noi_dung %}
+<h1>Quản trị</h1>
+<section class="hop">
+  <h2>Theo dõi</h2>
+  <ul class="ds-lien-ket">
+    <li><a href="/chu/bo-quen">Bỏ quên</a> <span class="nho">· lead đang chăm sóc mà quá hạn, nhắc sale</span> {% if so_bo_quen %}<strong class="dem-do">{{ so_bo_quen }}</strong>{% endif %}</li>
+    <li><a href="/chu/rat-quan-tam">Rất quan tâm chưa chốt</a> <span class="nho">· nên gọi kèm sale</span></li>
+    <li><a href="/chu/theo-sale">Theo sale</a> <span class="nho">· số lead, quá hạn, chốt của từng người</span></li>
+    <li><a href="/chu/bao-cao">Báo cáo tháng</a> <span class="nho">· phễu Lead mới → Nhập học</span></li>
+  </ul>
+</section>
+<section class="hop">
+  <h2>Gửi phụ huynh</h2>
+  <ul class="ds-lien-ket">
+    <li><a href="/chu/gui/uu-dai">Gửi ưu đãi</a> <span class="nho">· ai nên nhận ưu đãi học phí</span></li>
+    <li><a href="/chu/gui/thong-tin">Gửi thông tin</a> <span class="nho">· lead dài hạn nên nhận tin hoạt động</span></li>
+  </ul>
+  <p class="nho">App không tự nhắn phụ huynh. Bạn gửi bằng Zalo hay Messenger, rồi đánh dấu đã gửi ở đây.</p>
+</section>
+<section class="hop">
+  <h2>Thiết lập</h2>
+  <ul class="ds-lien-ket">
+    <li><a href="/quan-tri/nguoi-dung">Người dùng</a> <span class="nho">· thêm sale, đặt lại mật khẩu, nghỉ việc</span></li>
+    <li><a href="/chu/cai-dat">Cài đặt</a> <span class="nho">· số ngày nhắc, ngày nghỉ, danh mục</span></li>
+  </ul>
+</section>
+<section class="hop">
+  <h2>Xuất dữ liệu</h2>
+  <div class="hang-nut">
+    <a class="nut" href="/chu/xuat/ho-so-lead.csv">Hồ sơ lead (CSV)</a>
+    <a class="nut" href="/chu/xuat/cham-soc.csv">Chăm sóc (CSV)</a>
+  </div>
+  <p class="nho">Tệp có đủ SĐT phụ huynh: chỉ lưu trên máy của trường, không gửi lên nhóm chat.</p>
+</section>
+{% endblock %}

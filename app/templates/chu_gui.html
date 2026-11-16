@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{{ tieu_de }} · Casa chăm sóc lead{% endblock %}
+{% block noi_dung %}
+<p><a href="/chu">‹ Quản trị</a></p>
+<h1>{{ tieu_de }} <small>{{ ds|length }} phụ huynh</small></h1>
+<p class="nho">{% if kieu == 'uu-dai' %}Phụ huynh nên nhận ưu đãi học phí lúc này. Người băn khoăn học phí lên đầu.{% else %}Lead dài hạn đến lượt nhận tin hoạt động của trường.{% endif %}
+  Gửi bằng Zalo hoặc Messenger, rồi chọn những người đã gửi và bấm Lưu.</p>
+{% if tb %}<p class="thong-bao">{{ tb }}</p>{% endif %}
+<form class="tim" method="get" action="/chu/gui/{{ kieu }}">
+  <select name="co_so" aria-label="Cơ sở"><option value="">Mọi cơ sở</option>
+    {% for c in ds_co_so %}<option {{ 'selected' if c == co_so }}>{{ c }}</option>{% endfor %}</select>
+  <button>Lọc</button>
+</form>
+{% if not ds %}<p class="trong">Hiện chưa có ai cần gửi.</p>{% else %}
+<form method="post" action="/chu/gui/{{ kieu }}">
+  <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="co_so" value="{{ co_so }}">
+  {% for x in ds %}{% set r = x.lt.row %}
+  <label class="hop dong-chon">
+    <input type="checkbox" name="lead_id" value="{{ r.id }}">
+    <span>
+      <strong>{{ r.ten_ph }}</strong>{% if r.ten_be %} · bé {{ r.ten_be }}{% endif %} · <a href="/lead/{{ r.id }}">{{ r.sdt }}</a>
+      {% if x.hoc_phi %}<span class="nhan">băn khoăn học phí</span>{% endif %}
+      <div class="nho">{{ r.co_so or 'Chưa rõ cơ sở' }} · {{ x.lt.giai_doan }} · sale {{ r.ten_sale or 'chưa giao' }}
+        · {% if x.so_lan %}đã gửi {{ x.so_lan }} lần, lần cuối {{ ngay_vn(x.lan_cuoi) }}{% else %}chưa gửi lần nào{% endif %}</div>
+    </span>
+  </label>
+  {% endfor %}
+  <button class="chinh">Lưu: đã gửi cho những người đã chọn</button>
+</form>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Báo cáo tháng · Casa chăm sóc lead{% endblock %}
+{% block noi_dung %}
+<p><a href="/chu">‹ Quản trị</a></p>
+<h1>Báo cáo tháng</h1>
+<form class="tim" method="get" action="/chu/bao-cao">
+  <input name="thang" type="month" value="{{ thang }}" aria-label="Tháng">
+  <select name="co_so" aria-label="Cơ sở">{% for c in ds_co_so %}<option {{ 'selected' if c == co_so }}>{{ c }}</option>{% endfor %}</select>
+  <button>Xem</button>
+</form>
+<p class="nho">Tháng {{ thang[5:] }}/{{ thang[:4] }} · {{ co_so }}. Đếm lead nhận trong tháng và đã qua tới bước đó (tính cả bước sau).
+  Tháng trước: {{ moi_truoc }} lead mới.</p>
+<table class="bang-so">
+  <thead><tr><th>Bước</th><th>Số lead</th><th>So với lead mới</th><th>So với bước trên</th></tr></thead>
+  <tbody>{% for b in buoc %}<tr><td>{{ b.ten }}</td><td>{{ b.so }}</td><td>{{ b.so_moi }}</td><td>{{ b.so_truoc }}</td></tr>{% endfor %}</tbody>
+</table>
+{% endblock %}

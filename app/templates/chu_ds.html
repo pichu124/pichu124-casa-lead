@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}{{ tieu_de }} · Casa chăm sóc lead{% endblock %}
+{% block noi_dung %}
+<p><a href="/chu">‹ Quản trị</a></p>
+<h1>{{ tieu_de }} <small>{{ ds|length }} lead</small></h1>
+<p class="nho">{{ mo_ta }}</p>
+{% if tb %}<p class="thong-bao">{{ tb }}</p>{% endif %}
+{% if not ds %}<p class="trong">Không có lead nào.</p>{% endif %}
+{% set show_sale = true %}
+{% for lt in ds %}
+<div class="the-kem">
+  {% include "_the.html" %}
+  {% if nhac %}
+  <form method="post" action="/chu/nhac-sale/{{ lt.row.id }}" class="nhac">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="quay_ve" value="{{ request.url.path }}">
+    <button {{ 'disabled' if not lt.row.sale_id }}>{{ 'Nhắc sale' if lt.row.sale_id else 'Chưa giao sale' }}</button>
+    {% if lt.row.chu_nhac_luc %}<span class="nho">Đã nhắc {{ gio_vn(doc_gio(lt.row.chu_nhac_luc)) }}</span>{% endif %}
+  </form>
+  {% endif %}
+</div>
+{% endfor %}
+{% endblock %}

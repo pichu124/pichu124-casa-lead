@@ -42,3 +42,16 @@ label.chon input { width: 20px; height: 20px; }
 .thanh-duoi a { flex: 1; text-align: center; padding: 12px 4px; color: var(--phu); text-decoration: none; font-size: 14px; }
 .thanh-duoi a.dang { color: var(--xanh); font-weight: 600; }
 .nut-noi { position: fixed; right: 20px; bottom: 72px; width: 56px; height: 56px; border-radius: 50%; background: var(--xanh); color: #fff; font-size: 30px; line-height: 54px; text-align: center; text-decoration: none; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.ds-lien-ket { list-style: none; padding: 0; margin: 0; } .ds-lien-ket li { padding: 8px 0; border-top: 1px solid var(--vien); } .ds-lien-ket li:first-child { border-top: 0; }
+.ds-lien-ket a { font-weight: 600; }
+.dem-do, .so-do { color: var(--do); font-weight: 600; }
+.the-kem { margin-bottom: 12px; } .the-kem .the { margin-bottom: 4px; }
+.nhac { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 0; }
+.nhac button[disabled] { opacity: .5; cursor: default; }
+.cuon-ngang { overflow-x: auto; }
+.bang-so { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--vien); border-radius: 10px; font-size: 14px; }
+.bang-so th, .bang-so td { padding: 8px; border-bottom: 1px solid var(--vien); text-align: right; } .bang-so th:first-child, .bang-so td:first-child { text-align: left; }
+.bang-so th { color: var(--phu); font-weight: 600; }
+.dong-chon { display: flex; gap: 10px; align-items: flex-start; } .dong-chon input { width: 22px; height: 22px; margin-top: 2px; flex: none; }
+.nhan { display: inline-block; background: #fff4e5; color: var(--cam); border-radius: 6px; padding: 0 6px; font-size: 13px; margin-left: 4px; }
+.trong-dong { display: inline; margin-left: 8px; } .trong-dong button { padding: 2px 10px; font-size: 14px; }

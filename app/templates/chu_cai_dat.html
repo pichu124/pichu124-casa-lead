@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Cài đặt · Casa chăm sóc lead{% endblock %}
+{% block noi_dung %}
+<p><a href="/chu">‹ Quản trị</a></p>
+<h1>Cài đặt</h1>
+{% if tb %}<p class="thong-bao">{{ tb }}</p>{% endif %}
+<section class="hop">
+  <h2>Số ngày nhắc</h2>
+  <form class="bieu-mau" method="post" action="/chu/cai-dat">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="viec" value="cau_hinh">
+    {% for c in cau_hinh %}
+    <label>{{ c.khoa }} <input name="ch_{{ c.khoa }}" value="{{ c.gia_tri }}" inputmode="numeric" pattern="[0-9]*">
+      {% if c.y_nghia %}<span class="nho">{{ c.y_nghia }}</span>{% endif %}</label>
+    {% endfor %}
+    <button class="chinh">Lưu số ngày</button>
+  </form>
+</section>
+<section class="hop">
+  <h2>Ngày nghỉ</h2>
+  <p class="nho">Không gửi nhắc sáng vào ngày nghỉ; hạn rơi vào ngày nghỉ dời sang ngày làm việc kế tiếp.</p>
+  <ul class="lich-su">
+  {% for n in ngay_nghi %}
+    <li>{{ ngay_vn(doc_ngay(n.ngay)) }} {{ n.ten }}
+      <form method="post" action="/chu/cai-dat" class="trong-dong">
+        <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="viec" value="bo_ngay_nghi">
+        <input type="hidden" name="ngay" value="{{ n.ngay }}"><button>Bỏ</button></form></li>
+  {% endfor %}
+  </ul>
+  <form class="bieu-mau" method="post" action="/chu/cai-dat">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="viec" value="them_ngay_nghi">
+    <label>Ngày <input name="ngay" type="date" required></label>
+    <label>Tên (vd Tết, nghỉ bù) <input name="ten"></label>
+    <button>Thêm ngày nghỉ</button>
+  </form>
+</section>
+{% for loai, ds in danh_muc.items() %}
+<section class="hop">
+  <h2>Danh mục: {{ loai }}</h2>
+  <ul class="lich-su">
+  {% for g in ds %}
+    <li>{{ g }}
+      <form method="post" action="/chu/cai-dat" class="trong-dong" onsubmit="return confirm('Bỏ lựa chọn này? Lead cũ vẫn giữ giá trị.')">
+        <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="viec" value="bo_danh_muc">
+        <input type="hidden" name="loai" value="{{ loai }}"><input type="hidden" name="gia_tri" value="{{ g }}"><button>Bỏ</button></form></li>
+  {% endfor %}
+  </ul>
+  <form class="tim" method="post" action="/chu/cai-dat">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="viec" value="them_danh_muc">
+    <input type="hidden" name="loai" value="{{ loai }}">
+    <input name="gia_tri" placeholder="Thêm lựa chọn" aria-label="Thêm lựa chọn {{ loai }}" required>
+    <button>Thêm</button>
+  </form>
+</section>
+{% endfor %}
+{% endblock %}

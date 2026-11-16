@@ -345,6 +345,8 @@ async def lead_moi(request: Request):
         conn.commit()
         if trung:
             await run_in_threadpool(_bao_trung, v, trung)
+        if v.get("sale_id") and v["sale_id"] != nguoi["id"]:
+            await run_in_threadpool(_bao_duoc_giao, cur.lastrowid, nguoi["ten"])
         return _ve_lai(f"/lead/{cur.lastrowid}")
     finally:
         conn.close()
@@ -374,6 +376,24 @@ def _bao_trung(v: dict, trung: list[sqlite3.Row]) -> None:
     tin.append("Mở app, mục Tất cả lead, để gộp hoặc giao lại.")
     for chat in chu:
         telegram.gui_tin(chat, "\n".join(tin))
+
+
+def _bao_duoc_giao(lead_id: int, nguoi_giao: str) -> None:
+    """Báo sale qua Telegram khi chủ giao (hoặc chuyển) một lead cho họ. Không kèm SĐT."""
+    conn = _conn()
+    try:
+        r = conn.execute("SELECT lead.*, nguoi_dung.telegram_chat_id AS chat FROM lead "
+                         "JOIN nguoi_dung ON nguoi_dung.id = lead.sale_id WHERE lead.id = ?", (lead_id,)).fetchone()
+    finally:
+        conn.close()
+    if r is None:
+        return
+    be = f" (bé {r['ten_be']})" if r["ten_be"] else ""
+    tin = [f"{nguoi_giao} vừa giao cho bạn lead {r['ten_ph']}{be}, {r['co_so'] or 'chưa rõ cơ sở'}."]
+    if r["nguon"]:
+        tin.append(f"Nguồn: {r['nguon']}.")
+    tin.append("Mở app, mục Hôm nay, để liên hệ.")
+    telegram.gui_tin(r["chat"] or "", "\n".join(tin))
 
 
 @app.get("/lead/{lead_id}/sua", response_class=HTMLResponse)
@@ -407,6 +427,8 @@ async def sua_lead(request: Request, lead_id: int):
         conn.commit()
         if trung:
             await run_in_threadpool(_bao_trung, v, trung)
+        if v.get("sale_id") and v["sale_id"] != cu["sale_id"] and v["sale_id"] != nguoi["id"]:
+            await run_in_threadpool(_bao_duoc_giao, lead_id, nguoi["ten"])
         return _ve_lai(f"/lead/{lead_id}")
     finally:
         conn.close()
@@ -694,3 +716,9 @@ async def sua_nguoi_dung(request: Request, uid: int):
         return _ve_lai("/quan-tri/nguoi-dung?" + urlencode({"tb": tb}))
     finally:
         conn.close()
+
+
+# Màn của chủ (đợt B) nằm ở app/chu.py; nạp sau cùng vì nó dùng các tiện ích ở trên.
+from . import chu  # noqa: E402
+
+app.include_router(chu.router)
