@@ -14,14 +14,17 @@
     <span class="nho">Điền khi phụ huynh cho ngày sinh. Để trống thì app ước tính từ Tuổi bé.</span></label>
   <label>Cơ sở
     <select name="co_so"><option value="">—</option>
-      {% for c in ds_co_so %}<option {{ 'selected' if c == v.co_so }}>{{ c }}</option>{% endfor %}</select></label>
+      {% for c in ds_co_so %}<option {{ 'selected' if c == v.co_so }}>{{ c }}</option>{% endfor %}
+      {% if v.co_so and v.co_so not in ds_co_so %}<option value="{{ v.co_so }}" selected>{{ v.co_so }} (đã bỏ)</option>{% endif %}</select></label>
   <label>Nguồn
     <select name="nguon"><option value="">—</option>
-      {% for c in ds_nguon %}<option {{ 'selected' if c == v.nguon }}>{{ c }}</option>{% endfor %}</select></label>
+      {% for c in ds_nguon %}<option {{ 'selected' if c == v.nguon }}>{{ c }}</option>{% endfor %}
+      {% if v.nguon and v.nguon not in ds_nguon %}<option value="{{ v.nguon }}" selected>{{ v.nguon }} (đã bỏ)</option>{% endif %}</select></label>
   <label>Chiến dịch / quảng cáo <input name="chien_dich" value="{{ v.chien_dich or '' }}"></label>
   <fieldset><legend>Phụ huynh quan tâm</legend>
     {% set da_chon = (v.ph_quan_tam or '').split(', ') %}
     {% for c in ds_quan_tam %}<label class="chon"><input type="checkbox" name="ph_quan_tam" value="{{ c }}" {{ 'checked' if c in da_chon }}> {{ c }}</label>{% endfor %}
+    {% for c in da_chon if c and c not in ds_quan_tam %}<label class="chon"><input type="checkbox" name="ph_quan_tam" value="{{ c }}" checked> {{ c }} (đã bỏ)</label>{% endfor %}
   </fieldset>
   {% if nguoi.vai_tro == 'chu' %}
   <label>Sale phụ trách
@@ -33,7 +36,8 @@
       {% for c in ds_chat_luong %}<option {{ 'selected' if c == v.chat_luong }}>{{ c }}</option>{% endfor %}</select></label>
   <label data-hien-khi="chat_luong=Trung bình|Kém">Lý do chất lượng
     <select name="ly_do_chat_luong"><option value="">—</option>
-      {% for c in ds_ly_do_cl %}<option {{ 'selected' if c == v.ly_do_chat_luong }}>{{ c }}</option>{% endfor %}</select></label>
+      {% for c in ds_ly_do_cl %}<option {{ 'selected' if c == v.ly_do_chat_luong }}>{{ c }}</option>{% endfor %}
+      {% if v.ly_do_chat_luong and v.ly_do_chat_luong not in ds_ly_do_cl %}<option value="{{ v.ly_do_chat_luong }}" selected>{{ v.ly_do_chat_luong }} (đã bỏ)</option>{% endif %}</select></label>
   <label>Ghi chú <textarea name="ghi_chu" rows="3">{{ v.ghi_chu or '' }}</textarea></label>
   <fieldset><legend>Gia đình có em nhỏ?</legend>
     {% for c in [''] + q.EM_NHO %}<label class="chon"><input type="radio" name="em_nho" value="{{ c }}" data-dieu-khien="em_nho" {{ 'checked' if c == (v.em_nho or '') }}> {{ c or 'Chưa hỏi' }}</label>{% endfor %}

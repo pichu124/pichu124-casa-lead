@@ -312,3 +312,18 @@ def test_an_sdt_nhieu_kieu_viet():
     for s in ("(091) 234 5678", "912345678", "0912 - 345 - 678", "+84 (91) 234 5678"):
         assert not re.search(r"\d{3}", telegram.an_sdt(f"Chị Lan {s}").replace("[SĐT]", "")), s
     assert telegram.an_sdt("Quá hạn 12 ngày, nhận 04/11") == "Quá hạn 12 ngày, nhận 04/11"
+
+
+def test_an_sdt_dau_ngan_khac():
+    for s in ("0912 345 678", "0912,345,678", "0912_345_678", "0912–345–678"):
+        assert "345" not in telegram.an_sdt(f"PH Lan {s} hỏi"), repr(s)
+    assert telegram.an_sdt("Quá hạn 12 ngày\n04/11/2026") == "Quá hạn 12 ngày\n04/11/2026"
+
+
+def test_ngay_sai_o_bi_an_khong_chan_luu(du_lieu):
+    c = dang_nhap("sale3")
+    lead = id_lead("Lan Thử")
+    r = c.post(f"/lead/{lead}/ghi-nhan", data={
+        "csrf": csrf(c, f"/lead/{lead}/ghi-nhan"), "phuong_thuc": "Gọi điện", "tinh_trang": "Đang cân nhắc",
+        "muc_quan_tam": "Hời hợt", "hen_lai_sau": "1 tuần", "ngay_nhap_hoc": "20277-01-01"}, follow_redirects=False)
+    assert r.status_code == 303, r.text

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import csv
 import io
+import re
 import sqlite3
 from datetime import date
 from urllib.parse import urlencode
@@ -84,8 +85,9 @@ async def nhac_sale(request: Request, lead_id: int):
             raise KhongThay()
         lt = logic.tinh(conn, [r])[0]
         sale = conn.execute("SELECT * FROM nguoi_dung WHERE id = ?", (r["sale_id"],)).fetchone() if r["sale_id"] else None
-        conn.execute("UPDATE lead SET chu_nhac_luc = ? WHERE id = ?", (dongho.ghi_gio(dongho.bay_gio()), lead_id))
-        conn.commit()
+        if sale is None or sale["dang_lam"]:
+            conn.execute("UPDATE lead SET chu_nhac_luc = ? WHERE id = ?", (dongho.ghi_gio(dongho.bay_gio()), lead_id))
+            conn.commit()
         be = f" (bé {r['ten_be']})" if r["ten_be"] else ""
         tin = [f"{nguoi['ten']} nhắc: liên hệ {r['ten_ph']}{be}, {r['co_so'] or 'chưa rõ cơ sở'}."]
         if lt.so_ngay_qua_han:
@@ -93,8 +95,13 @@ async def nhac_sale(request: Request, lead_id: int):
         if lt.viec:
             tin.append(f"Việc cần làm: {lt.viec}.")
         tin.append(f"Lần cuối: {lt.lan_cuoi_tom_tat}.")
-        da_gui = bool(sale) and await run_in_threadpool(telegram.gui_tin, sale["telegram_chat_id"] or "", "\n".join(tin))
-        tb = "Đã gửi Telegram nhắc sale." if da_gui else "Đã ghi lại lúc nhắc, nhưng chưa gửi được Telegram (sale chưa nối Telegram hoặc chưa cấu hình bot)."
+        if sale is not None and not sale["dang_lam"]:
+            tb = f"{sale['ten']} đã nghỉ: không gửi nhắc. Hãy chuyển lead này cho sale khác (Sửa hồ sơ)."
+        else:
+            da_gui = sale is not None and await run_in_threadpool(telegram.gui_tin, sale["telegram_chat_id"] or "",
+                                                                  "\n".join(tin))
+            tb = ("Đã gửi Telegram nhắc sale." if da_gui else
+                  "Đã ghi lại lúc nhắc, nhưng chưa gửi được Telegram (sale chưa nối Telegram hoặc chưa cấu hình bot).")
         quay_ve = form.get("quay_ve") if form.get("quay_ve") in ("/chu/bo-quen", "/chu/rat-quan-tam") else "/chu/bo-quen"
         return _ve_lai(f"{quay_ve}?{urlencode({'tb': tb})}")
     finally:
@@ -112,14 +119,14 @@ def theo_sale(request: Request):
         hom_nay = dongho.hom_nay()
         ds = _tat_ca(conn, nguoi)
         hang = []
-        for s in conn.execute("SELECT * FROM nguoi_dung WHERE dang_lam = 1 ORDER BY vai_tro DESC, ten"):
+        for s in conn.execute("SELECT * FROM nguoi_dung ORDER BY dang_lam DESC, vai_tro DESC, ten"):
             cua = [lt for lt in ds if lt.row["sale_id"] == s["id"]]
-            if s["vai_tro"] == "chu" and not cua:
+            if (s["vai_tro"] == "chu" or not s["dang_lam"]) and not cua:
                 continue
             chot = sum(lt.giai_doan == q.GD_CHOT for lt in cua)
             so_cs = conn.execute("SELECT COUNT(*), SUM(substr(thoi_gian, 1, 10) = ?) FROM cham_soc WHERE sale_id = ?",
                                  (hom_nay.isoformat(), s["id"])).fetchone()
-            hang.append(dict(ten=s["ten"], co_so=s["co_so"], tong=len(cua),
+            hang.append(dict(ten=s["ten"] + ("" if s["dang_lam"] else " (đã nghỉ)"), co_so=s["co_so"], tong=len(cua),
                              dang=sum(lt.giai_doan == q.GD_DANG for lt in cua),
                              qua_han=sum(lt.khan == "Quá hạn" for lt in cua), chot=chot,
                              ty_le=f"{chot * 100 // len(cua)}%" if cua else "–",
@@ -185,11 +192,14 @@ async def da_gui(request: Request, kieu: str):
     try:
         nguoi = _nguoi(request, conn)
         _chu(nguoi)
-        ids = [int(x) for x in form.getlist("lead_id") if x.isdigit()]
+        ids = sorted({int(x) for x in form.getlist("lead_id") if x.isdigit()})
         bay_gio = dongho.ghi_gio(dongho.bay_gio())
         so = 0
         for i in ids:
-            if logic.mot_lead(conn, nguoi, i) is not None:
+            # bấm Lưu hai lần hoặc gửi lại biểu mẫu: không ghi thêm lần gửi trong cùng ngày (kẻo hết lượt ưu đãi)
+            da_co = conn.execute("SELECT 1 FROM gui_thong_tin WHERE lead_id = ? AND loai = ? AND substr(thoi_gian, 1, 10) = ?",
+                                 (i, loai, bay_gio[:10])).fetchone()
+            if not da_co and logic.mot_lead(conn, nguoi, i) is not None:
                 conn.execute("INSERT INTO gui_thong_tin (lead_id, thoi_gian, loai, nguoi_gui) VALUES (?, ?, ?, ?)",
                              (i, bay_gio, loai, nguoi["id"]))
                 so += 1
@@ -239,6 +249,21 @@ def bao_cao(request: Request, thang: str = "", co_so: str = q.TAT_CA):
 
 # ------------------------------------------------------------------ cài đặt
 
+THANG_DNH, NGAY_DNH = "Đầu năm học tháng", "Đầu năm học ngày"
+# Giới hạn cho từng khoá. Giá trị vô lý (tháng 13, ngày 31/6, tối đa 0 lần) làm bộ quy tắc lỗi hoặc chạy sai
+# cho mọi lead, nên từ chối ngay ở đây. Khoá không có trong bảng: số ngày, 0–1000.
+GIOI_HAN_CAU_HINH = {THANG_DNH: (1, 12), NGAY_DNH: (1, 31), "Chưa liên lạc tối đa": (1, 20), "Ưu đãi tối đa": (1, 20),
+                     "Tuổi nhận học (tháng)": (0, 120), "Tuổi tối đa (tháng)": (1, 120)}
+
+
+def _ngay_hop_le(thang: int, ngay: int) -> bool:
+    try:
+        date(2001, thang, ngay)  # năm không nhuận: 29/02 cũng bị từ chối
+        return True
+    except ValueError:
+        return False
+
+
 @router.get("/cai-dat", response_class=HTMLResponse)
 def cai_dat(request: Request, tb: str = ""):
     conn = _conn()
@@ -263,13 +288,23 @@ async def luu_cai_dat(request: Request):
         viec = form.get("viec")
         tb = "Không làm gì."
         if viec == "cau_hinh":
-            sai = []
-            for r in conn.execute("SELECT khoa FROM cau_hinh").fetchall():
-                v = (form.get("ch_" + r["khoa"]) or "").strip()
-                if v.isdigit() and 0 <= int(v) <= 1000:
-                    conn.execute("UPDATE cau_hinh SET gia_tri = ? WHERE khoa = ?", (int(v), r["khoa"]))
-                elif v:
-                    sai.append(r["khoa"])
+            cu = logic.cau_hinh(conn)
+            moi, sai = dict(cu), []
+            for khoa in cu:
+                v = (form.get("ch_" + khoa) or "").strip()
+                if not v:
+                    continue
+                tu, den = GIOI_HAN_CAU_HINH.get(khoa, (0, 1000))
+                if v.isdigit() and tu <= int(v) <= den:
+                    moi[khoa] = int(v)
+                else:
+                    sai.append(khoa)
+            if not _ngay_hop_le(moi[THANG_DNH], moi[NGAY_DNH]):
+                sai += [k for k in (THANG_DNH, NGAY_DNH) if k not in sai]
+                moi[THANG_DNH], moi[NGAY_DNH] = cu[THANG_DNH], cu[NGAY_DNH]
+            for khoa, v in moi.items():
+                if khoa not in sai and v != cu[khoa]:
+                    conn.execute("UPDATE cau_hinh SET gia_tri = ? WHERE khoa = ?", (v, khoa))
             tb = "Đã lưu số ngày nhắc." + (f" Bỏ qua ô không hợp lệ: {', '.join(sai)}." if sai else "")
         elif viec == "them_ngay_nghi":
             loi: list[str] = []
@@ -298,6 +333,27 @@ async def luu_cai_dat(request: Request):
 
 # ------------------------------------------------------------------ xuất CSV
 
+_SO_DIEN_THOAI = re.compile(r"[+\-][\d ().\-]*")
+
+
+class _BoGhiAnToan:
+    """Ô do người gõ (tên, phản hồi, sau này cả tên Facebook) mà bắt đầu bằng = + - @ thì Excel/Sheets chạy như
+    công thức. Thêm dấu ' phía trước. SĐT kiểu +84 912 345 678 giữ nguyên."""
+
+    def __init__(self, w):
+        self.w = w
+
+    @staticmethod
+    def _o(v):
+        s = "" if v is None else str(v)
+        if s[:1] in ("=", "@", "\t", "\r") or (s[:1] in ("+", "-") and not _SO_DIEN_THOAI.fullmatch(s)):
+            return "'" + s
+        return s
+
+    def writerow(self, hang):
+        self.w.writerow([self._o(v) for v in hang])
+
+
 @router.get("/xuat/{ten}.csv")
 def xuat(request: Request, ten: str):
     """Hai tệp cùng tên cột như Sheet cũ, để báo cáo tuần (plugin casa-ops) đọc được."""
@@ -307,7 +363,7 @@ def xuat(request: Request, ten: str):
         _chu(nguoi)
         ten_sale = {r["id"]: r["ten_dang_nhap"] for r in conn.execute("SELECT id, ten_dang_nhap FROM nguoi_dung")}
         out = io.StringIO()
-        w = csv.writer(out)
+        w = _BoGhiAnToan(csv.writer(out))
         if ten == "ho-so-lead":
             w.writerow(q.COT_HO_SO)
             for r in conn.execute("SELECT * FROM lead ORDER BY id"):
@@ -318,11 +374,20 @@ def xuat(request: Request, ten: str):
                             r["em_nho"], r["ngay_sinh_em"] or ""])
         elif ten == "cham-soc":
             w.writerow(q.COT_CHAM_SOC)
-            for r in conn.execute("SELECT * FROM cham_soc ORDER BY thoi_gian, id"):
+            ch, nghi = logic.cau_hinh(conn), logic.ngay_nghi(conn)
+            rows = list(conn.execute("SELECT * FROM cham_soc ORDER BY thoi_gian, id"))
+            cua_lead: dict[int, list[tuple[int, q.LanChamSoc]]] = {}
+            for r in rows:
+                cua_lead.setdefault(r["lead_id"], []).append((r["id"], logic.lan_cham_soc(r)))
+            for r in rows:
                 han = logic.ngay_hen(r)
+                c = next(x for i, x in cua_lead[r["lead_id"]] if i == r["id"])
+                truoc = [x for i, x in cua_lead[r["lead_id"]] if i != r["id"]]
+                tiep = q.han_lien_he_tiep(c, truoc, ch, nghi)
                 w.writerow([r["id"], r["lead_id"], r["thoi_gian"], ten_sale.get(r["sale_id"], ""), r["phuong_thuc"],
                             r["tinh_trang"], r["muc_quan_tam"], r["phan_hoi"], r["ly_do_tu_choi"],
-                            han.isoformat() if han else "", r["ngay_hen_tham_quan"] or "", "", "",
+                            han.isoformat() if han else "", r["ngay_hen_tham_quan"] or "", q.lan_thu(truoc, c),
+                            tiep.isoformat() if tiep else "",
                             "TRUE" if r["ph_chu_dong"] else "FALSE", r["hen_lai_sau"],
                             "TRUE" if r["da_gui_thu_moi"] else "FALSE", r["ngay_nhap_hoc"] or ""])
         else:

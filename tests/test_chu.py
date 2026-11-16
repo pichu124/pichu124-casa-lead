@@ -186,3 +186,106 @@ def test_chu_giao_lead_cho_sale_thi_sale_nhan_telegram(du_lieu):
 def test_thanh_duoi_cua_chu_co_quan_tri(du_lieu):
     assert 'href="/chu"' in dang_nhap("chu").get("/hom-nay").text
     assert 'href="/chu"' not in dang_nhap("sale1").get("/hom-nay").text
+
+
+# ------------------------------------------------------------------ các lỗi reviewer đợt B tìm ra
+
+def test_cai_dat_tu_choi_dau_nam_hoc_vo_ly_khong_lam_sap(du_lieu):
+    c = dang_nhap("chu")
+    ma = csrf(c, "/chu/cai-dat")
+    for thang, ngay in (("13", "1"), ("0", "1"), ("6", "31"), ("2", "30")):
+        r = c.post("/chu/cai-dat", data={"csrf": ma, "viec": "cau_hinh", "ch_Đầu năm học tháng": thang,
+                                         "ch_Đầu năm học ngày": ngay})
+        assert "không hợp lệ" in r.text, (thang, ngay)
+    assert [x[0] for x in _sql("SELECT gia_tri FROM cau_hinh WHERE khoa LIKE 'Đầu năm học%' ORDER BY khoa DESC")] == [7, 1]
+    c.post("/chu/cai-dat", data={"csrf": ma, "viec": "cau_hinh", "ch_Ưu đãi tối đa": "0", "ch_Chưa liên lạc tối đa": "0"})
+    assert _sql("SELECT gia_tri FROM cau_hinh WHERE khoa = 'Ưu đãi tối đa'")[0][0] == 2
+    for url in ("/tat-ca", "/chu/bo-quen", "/chu/gui/uu-dai"):
+        assert c.get(url).status_code == 200
+
+
+def _gui_lai_bieu_mau(c, url):
+    """Gửi lại biểu mẫu y như trình duyệt: ô chọn đang chọn gì, ô đánh dấu đang đánh dấu gì."""
+    html = c.get(url).text
+    form = re.search(r'<form class="hop bieu-mau" method="post" action="([^"]+)">(.*?)</form>', html, re.S)
+    data = []
+    for m in re.finditer(r"<input ([^>]*)>", form.group(2)):
+        a = dict(re.findall(r'(\w+)="([^"]*)"', m.group(1)))
+        loai = a.get("type", "text")
+        if "name" not in a or (loai in ("checkbox", "radio") and " checked" not in m.group(1) + " "):
+            continue
+        data.append((a["name"], a.get("value", "")))
+    for m in re.finditer(r'<select name="(\w+)"[^>]*>(.*?)</select>', form.group(2), re.S):
+        chon = re.search(r"<option([^>]*)\bselected\b[^>]*>([^<]*)", m.group(2))
+        if chon:
+            val = re.search(r'value="([^"]*)"', chon.group(1))
+            data.append((m.group(1), val.group(1) if val else chon.group(2).strip()))
+    for m in re.finditer(r'<textarea name="(\w+)"[^>]*>(.*?)</textarea>', form.group(2), re.S):
+        data.append((m.group(1), m.group(2)))
+    gop: dict[str, list[str]] = {}
+    for k, v in data:
+        gop.setdefault(k, []).append(v)
+    return c.post(form.group(1), data=gop)
+
+
+def test_bo_lua_chon_danh_muc_khong_xoa_gia_tri_cua_lead_cu(du_lieu):
+    lead = id_lead("Hoa Thử")
+    _sql("UPDATE lead SET ph_quan_tam = 'Học phí', chat_luong = 'Trung bình', ly_do_chat_luong = 'Ở xa' WHERE id = ?", (lead,))
+    cu = dict(_sql("SELECT * FROM lead WHERE id = ?", (lead,))[0])
+    c = dang_nhap("chu")
+    ma = csrf(c, "/chu/cai-dat")
+    for loai, gia_tri in (("Cơ sở", cu["co_so"]), ("Nguồn", cu["nguon"]), ("Mối quan tâm", "Học phí"),
+                          ("Lý do chất lượng", "Ở xa")):
+        c.post("/chu/cai-dat", data={"csrf": ma, "viec": "bo_danh_muc", "loai": loai, "gia_tri": gia_tri})
+    assert "(đã bỏ)" in c.get(f"/lead/{lead}/sua").text
+    r = _gui_lai_bieu_mau(c, f"/lead/{lead}/sua")
+    assert r.status_code == 200, r.text
+    moi = dict(_sql("SELECT * FROM lead WHERE id = ?", (lead,))[0])
+    for k in ("co_so", "nguon", "ph_quan_tam", "ly_do_chat_luong", "sale_id"):
+        assert moi[k] == cu[k], k
+
+
+def test_nhac_sale_da_nghi_khong_gui_telegram(du_lieu):
+    _noi_telegram("sale1", "111")
+    _sql("UPDATE nguoi_dung SET dang_lam = 0 WHERE ten_dang_nhap = 'sale1'")
+    c = dang_nhap("chu")
+    r = c.post(f"/chu/nhac-sale/{id_lead('Đào Thử')}", data={"csrf": csrf(c, "/chu/bo-quen"), "quay_ve": "/chu/bo-quen"})
+    assert not du_lieu
+    assert "đã nghỉ" in r.text
+
+
+def test_cho_nghi_viec_thi_go_noi_telegram(du_lieu):
+    _noi_telegram("sale1", "111")
+    c = dang_nhap("chu")
+    uid = _sql("SELECT id FROM nguoi_dung WHERE ten_dang_nhap = 'sale1'")[0][0]
+    c.post(f"/quan-tri/nguoi-dung/{uid}", data={"csrf": csrf(c, "/quan-tri/nguoi-dung"), "viec": "nghi"})
+    assert _sql("SELECT telegram_chat_id FROM nguoi_dung WHERE id = ?", (uid,))[0][0] is None
+
+
+def test_theo_sale_hien_sale_da_nghi_con_giu_lead(du_lieu):
+    _sql("UPDATE nguoi_dung SET dang_lam = 0 WHERE ten_dang_nhap = 'sale1'")
+    assert "Sale 1 (đã nghỉ)" in dang_nhap("chu").get("/chu/theo-sale").text
+
+
+def test_gui_uu_dai_khong_ghi_trung(du_lieu):
+    c = dang_nhap("chu")
+    lead = str(id_lead("Hoa Thử"))
+    ma = csrf(c, "/chu/gui/uu-dai")
+    c.post("/chu/gui/uu-dai", data={"csrf": ma, "lead_id": [lead, lead]})
+    c.post("/chu/gui/uu-dai", data={"csrf": ma, "lead_id": [lead]})
+    assert len(_sql("SELECT * FROM gui_thong_tin WHERE lead_id = ?", (lead,))) == 1
+
+
+def test_xuat_cham_soc_co_lan_thu_va_han_lien_he_tiep(du_lieu):
+    hang = list(csv.DictReader(io.StringIO(dang_nhap("chu").get("/chu/xuat/cham-soc.csv").text.lstrip("﻿"))))
+    assert all(h["Lần thứ"].isdigit() for h in hang)
+    assert any(re.fullmatch(r"\d{4}-\d{2}-\d{2}", h["Hạn liên hệ tiếp"]) for h in hang)
+
+
+def test_xuat_csv_khong_de_o_thanh_cong_thuc(du_lieu):
+    lead = id_lead("Hoa Thử")
+    _sql("UPDATE lead SET ten_ph = '=HYPERLINK(\"x\")', ghi_chu = '@cmd', sdt = '+84 900 000 602' WHERE id = ?", (lead,))
+    hang = list(csv.DictReader(io.StringIO(dang_nhap("chu").get("/chu/xuat/ho-so-lead.csv").text.lstrip("﻿"))))
+    h = next(x for x in hang if x["Mã lead"] == str(lead))
+    assert h["Tên phụ huynh"] == "'=HYPERLINK(\"x\")" and h["Ghi chú"] == "'@cmd"
+    assert h["SĐT"] == "+84 900 000 602"

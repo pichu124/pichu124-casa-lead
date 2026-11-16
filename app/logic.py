@@ -141,7 +141,7 @@ def tinh(conn: sqlite3.Connection, leads: list[sqlite3.Row], hom_nay: date | Non
 def lead_cua(conn: sqlite3.Connection, nguoi: sqlite3.Row, sale_id: int | None = None,
              co_so: str = "") -> list[sqlite3.Row]:
     """Lead người này được thấy: sale chỉ thấy lead mình phụ trách, chủ thấy tất cả (lọc được)."""
-    sql = ("SELECT lead.*, nguoi_dung.ten AS ten_sale FROM lead "
+    sql = ("SELECT lead.*, nguoi_dung.ten AS ten_sale, nguoi_dung.dang_lam AS sale_dang_lam FROM lead "
            "LEFT JOIN nguoi_dung ON nguoi_dung.id = lead.sale_id WHERE 1 = 1")
     tham: list = []
     if nguoi["vai_tro"] != "chu":

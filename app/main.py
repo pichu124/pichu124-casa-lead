@@ -383,7 +383,8 @@ def _bao_duoc_giao(lead_id: int, nguoi_giao: str) -> None:
     conn = _conn()
     try:
         r = conn.execute("SELECT lead.*, nguoi_dung.telegram_chat_id AS chat FROM lead "
-                         "JOIN nguoi_dung ON nguoi_dung.id = lead.sale_id WHERE lead.id = ?", (lead_id,)).fetchone()
+                         "JOIN nguoi_dung ON nguoi_dung.id = lead.sale_id WHERE lead.id = ? AND nguoi_dung.dang_lam = 1",
+                         (lead_id,)).fetchone()
     finally:
         conn.close()
     if r is None:
@@ -442,9 +443,11 @@ def _gia_tri_cham_soc(form) -> tuple[dict, list[str]]:
     v["ph_chu_dong"] = 1 if form.get("ph_chu_dong") else 0
     v["da_gui_thu_moi"] = 1 if form.get("da_gui_thu_moi") else 0
     tt, loi = v["tinh_trang"], []
-    v["ngay_hen_goi_lai"] = _ngay_nhap(form, "ngay_hen_goi_lai", loi, "Ngày hẹn gọi lại")
-    v["ngay_hen_tham_quan"] = _ngay_nhap(form, "ngay_hen_tham_quan", loi, "Ngày hẹn tham quan")
-    v["ngay_nhap_hoc"] = _ngay_nhap(form, "ngay_nhap_hoc", loi, "Ngày nhập học dự kiến")
+    # lỗi ngày chỉ báo khi ô đó có nghĩa với tình trạng đã chọn (ô bị ẩn thì bị xoá bên dưới)
+    loi_ngay: dict[str, list[str]] = {k: [] for k in ("ngay_hen_goi_lai", "ngay_hen_tham_quan", "ngay_nhap_hoc")}
+    v["ngay_hen_goi_lai"] = _ngay_nhap(form, "ngay_hen_goi_lai", loi_ngay["ngay_hen_goi_lai"], "Ngày hẹn gọi lại")
+    v["ngay_hen_tham_quan"] = _ngay_nhap(form, "ngay_hen_tham_quan", loi_ngay["ngay_hen_tham_quan"], "Ngày hẹn tham quan")
+    v["ngay_nhap_hoc"] = _ngay_nhap(form, "ngay_nhap_hoc", loi_ngay["ngay_nhap_hoc"], "Ngày nhập học dự kiến")
     if v["phuong_thuc"] not in db.PHUONG_THUC:
         loi.append("Chọn phương thức liên hệ.")
     if tt not in q.TINH_TRANG:
@@ -464,17 +467,21 @@ def _gia_tri_cham_soc(form) -> tuple[dict, list[str]]:
     if tt == q.GOI_LAI and not v["hen_lai_sau"]:
         loi.append("Phụ huynh hẹn gọi lại: chọn Hẹn lại sau.")
     if v["hen_lai_sau"] == q.HEN_CHON_NGAY:
+        loi += loi_ngay["ngay_hen_goi_lai"]
         if not v["ngay_hen_goi_lai"] and not _chu_nhan(form, "ngay_hen_goi_lai"):
             loi.append("Chọn ngày hẹn gọi lại.")
     else:
         v["ngay_hen_goi_lai"] = None
     if tt == q.DA_HEN:
+        loi += loi_ngay["ngay_hen_tham_quan"]
         if not v["ngay_hen_tham_quan"] and not _chu_nhan(form, "ngay_hen_tham_quan"):
             loi.append("Chọn ngày hẹn tham quan.")
     else:
         v["ngay_hen_tham_quan"] = None
     if tt != q.DAT_COC:
         v["da_gui_thu_moi"], v["ngay_nhap_hoc"] = 0, None
+    else:
+        loi += loi_ngay["ngay_nhap_hoc"]
     return v, loi
 
 
@@ -705,8 +712,10 @@ async def sua_nguoi_dung(request: Request, uid: int):
                 conn.execute("UPDATE nguoi_dung SET mat_khau = ?, phien = phien + 1 WHERE id = ?", (auth.bam(mk), uid))
                 tb = "Đã đặt lại mật khẩu."
         elif viec == "nghi" and uid != nguoi["id"]:
-            conn.execute("UPDATE nguoi_dung SET dang_lam = 0, phien = phien + 1 WHERE id = ?", (uid,))
-            tb = "Đã tắt tài khoản. Lead của người này vẫn giữ nguyên: nhớ chuyển cho sale khác."
+            # gỡ nối Telegram: người đã nghỉ không được nhận tin có tên phụ huynh nữa (bật lại thì nối lại)
+            conn.execute("UPDATE nguoi_dung SET dang_lam = 0, phien = phien + 1, telegram_chat_id = NULL, "
+                         "telegram_ma = NULL WHERE id = ?", (uid,))
+            tb = "Đã tắt tài khoản và gỡ nối Telegram. Lead của người này vẫn giữ nguyên: nhớ chuyển cho sale khác."
         elif viec == "lam_lai":
             conn.execute("UPDATE nguoi_dung SET dang_lam = 1 WHERE id = ?", (uid,))
             tb = "Đã bật lại tài khoản."
