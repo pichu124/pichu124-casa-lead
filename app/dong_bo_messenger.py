@@ -67,6 +67,8 @@ def chay(conn: sqlite3.Connection) -> list[tuple[str, str]]:
 
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    # httpx ghi mỗi request kèm URL web app ở mức INFO: không để cron 5 phút một lần chép nó vào log
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     conn = db.ket_noi()
     try:
         db.khoi_tao(conn)

@@ -85,3 +85,11 @@ def test_khong_co_nguoi_nhan_thi_ghi_nho_khong_bao_don_sau_nay(sheet):  # noqa: 
     db.dat_he_thong(conn, "telegram_nhom", "-1001")
     conn.commit()
     assert dbm.chay(conn) == []  # E đã được ghi nhớ: nối nhóm sau không báo dồn
+
+
+def test_log_cron_khong_in_dia_chi_web_app(sheet, monkeypatch):  # noqa: F811
+    """httpx log mỗi request kèm URL web app ở mức INFO: cron chạy 5 phút một lần không được ghi nó vào log."""
+    import logging
+    monkeypatch.setattr(logging.getLogger("httpx"), "level", logging.NOTSET)
+    dbm.main()
+    assert logging.getLogger("httpx").level >= logging.WARNING
