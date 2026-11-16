@@ -9,7 +9,11 @@ import pytest
 
 GOC = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(GOC))
-os.environ.setdefault("CASA_LEAD_DATA", tempfile.mkdtemp(prefix="casa-lead-test-"))
+# Test luôn chạy cách ly, kể cả khi shell đang mang cấu hình máy thật (vd sau `. /etc/casa-lead.env`):
+# không dùng thư mục dữ liệu thật, không bật chế độ production (cookie chỉ qua HTTPS), không cầm token Telegram thật.
+for _bien in ("CASA_LEAD_ENV", "CASA_LEAD_SECRET", "CASA_LEAD_URL", "TELEGRAM_BOT_TOKEN", "TELEGRAM_BOT_USERNAME"):
+    os.environ.pop(_bien, None)
+os.environ["CASA_LEAD_DATA"] = tempfile.mkdtemp(prefix="casa-lead-test-")
 
 from fastapi.testclient import TestClient  # noqa: E402
 
