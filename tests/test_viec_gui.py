@@ -70,3 +70,19 @@ def test_chu_soan_noi_dung_mau_o_cai_dat(du_lieu):
     assert db.lay_he_thong(conn, "noi_dung_uu_dai") == "Ưu đãi T11"
     assert db.lay_he_thong(conn, "noi_dung_thong_tin") == "Hội thảo 30/11"
     assert "Hội thảo 30/11" in c.get("/chu/cai-dat").text
+
+
+def test_qua_han_roi_ghi_them_cham_soc_van_con_nhac(du_lieu):
+    """Sale gọi phụ huynh (ghi nhận) mà chưa gửi ưu đãi: việc gửi đã quá hạn không được biến mất."""
+    lid = _den_han()
+    s = dang_nhap("sale1")
+    assert "quá hạn 35 ngày" in s.get("/hom-nay").text
+    r = s.post(f"/lead/{lid}/ghi-nhan", follow_redirects=False, data={"csrf": csrf(s, f"/lead/{lid}/ghi-nhan"), "phuong_thuc": "Gọi điện",
+                                          "tinh_trang": "Đang cân nhắc", "muc_quan_tam": "Quan tâm bình thường",
+                                          "phan_hoi": "Hỏi lại học phí"})
+    assert r.status_code == 303
+    trang = s.get("/hom-nay").text
+    assert "Gửi ưu đãi học phí" in trang and "quá hạn 35 ngày" in trang
+    assert "Hoa Thử" in dang_nhap("chu").get("/chu/gui/uu-dai").text
+    s.post(f"/lead/{lid}/da-gui", data={"csrf": csrf(s, "/lead-moi"), "kieu": "uu-dai"})
+    assert "Gửi ưu đãi học phí" not in s.get("/hom-nay").text

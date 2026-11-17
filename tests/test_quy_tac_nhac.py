@@ -239,6 +239,25 @@ class ChuTuGui(unittest.TestCase):
             with self.subTest(gd=gd, sdt=sdt, coc=coc):
                 self.assertIsNone(self.han(gd=gd, sdt=sdt, hp=False, coc=coc))
 
+    def test_viec_da_den_han_giu_toi_khi_gui(self):
+        """Hạn đã đến mà chưa gửi thì không lùi (sale ghi thêm chăm sóc làm hạn tính lại xa hơn) và không mất
+        (quá cửa sổ lần 2); chỉ hết khi gửi vào hoặc sau hạn đó, hoặc lead không còn được gửi."""
+        den = D(2026, 10, 1)
+        self.assertEqual(q.han_viec_gui(D(2026, 11, 16), den, [], True), den)
+        self.assertEqual(q.han_viec_gui(None, den, [], True), den)
+        self.assertEqual(q.han_viec_gui(D(2026, 12, 1), den, [D(2026, 10, 5)], True), D(2026, 12, 1))  # đã gửi
+        self.assertEqual(q.han_viec_gui(D(2026, 9, 20), den, [], True), D(2026, 9, 20))
+        self.assertIsNone(q.han_viec_gui(D(2026, 11, 16), den, [], False))  # chốt, dừng, đặt cọc, mất SĐT
+        self.assertEqual(q.han_viec_gui(D(2026, 11, 16), None, [], True), D(2026, 11, 16))
+
+    def test_co_the_gui(self):
+        self.assertTrue(q.co_the_gui(q.GUI_UU_DAI, q.GD_DANG, True))
+        self.assertFalse(q.co_the_gui(q.GUI_UU_DAI, q.GD_DANG, True, da_dat_coc=True))
+        self.assertFalse(q.co_the_gui(q.GUI_UU_DAI, q.GD_CHOT, True))
+        self.assertTrue(q.co_the_gui(q.GUI_THONG_TIN, q.GD_DAI_HAN, True))
+        self.assertFalse(q.co_the_gui(q.GUI_THONG_TIN, q.GD_DANG, True))
+        self.assertFalse(q.co_the_gui(q.GUI_THONG_TIN, q.GD_DAI_HAN, False))
+
     def test_bang_khoan_hoc_phi(self):
         self.assertTrue(q.bang_khoan_hoc_phi(None, "Học phí vượt khả năng", []))
         self.assertTrue(q.bang_khoan_hoc_phi(None, "", ["Băn khoăn Học phí, muốn hỏi chồng"]))

@@ -218,6 +218,9 @@ def viec_gui(conn: sqlite3.Connection, ds: list[LeadTinh], hom_nay: date | None 
     cho = ",".join("?" * len(ids))
     for g in conn.execute(f"SELECT lead_id, thoi_gian, loai FROM gui_thong_tin WHERE lead_id IN ({cho})", ids):
         gui[g["lead_id"]].append(q.LanGui(doc_gio(g["thoi_gian"]), g["loai"]))
+    da_den = {(r["lead_id"], r["loai"]): doc_ngay(r["han"])
+              for r in conn.execute(f"SELECT * FROM viec_gui_den WHERE lead_id IN ({cho})", ids)}
+    doi = False
     kq = []
     for lt in ds:
         g = gui[lt.row["id"]]
@@ -227,15 +230,28 @@ def viec_gui(conn: sqlite3.Connection, ds: list[LeadTinh], hom_nay: date | None 
         cuoi = lan_cham_soc(lt.lan_cuoi) if lt.lan_cuoi else None
         hoc_phi = q.bang_khoan_hoc_phi(cuoi, lt.row["ly_do_chat_luong"], [c["phan_hoi"] for c in lt.lich_su])
         da_coc = bool(lt.lan_cuoi) and lt.lan_cuoi["tinh_trang"] == q.DAT_COC
-        for loai, han in (
+        for loai, tinh in (
             (q.GUI_UU_DAI, q.han_gui_uu_dai(lt.giai_doan, co_sdt, hoc_phi, nhan, lan_cuoi, g, hom_nay, ch, da_coc, nghi)),
             (q.GUI_THONG_TIN, q.han_gui_thong_tin(lt.giai_doan, co_sdt, lan_cuoi, g, ch, nghi)),
         ):
+            cung = sorted(x.thoi_gian.date() for x in g if x.loai == loai)
+            khoa = (lt.row["id"], loai)
+            han = q.han_viec_gui(tinh, da_den.get(khoa), cung, q.co_the_gui(loai, lt.giai_doan, co_sdt, da_coc))
+            # Ghi lại việc đã đến hạn để nó không lùi / mất trước khi sale bấm Đã gửi; bỏ khi đã xong hoặc thôi gửi
+            if han is not None and han <= hom_nay:
+                if da_den.get(khoa) != han:
+                    conn.execute("INSERT INTO viec_gui_den (lead_id, loai, han) VALUES (?, ?, ?) ON CONFLICT(lead_id, loai) "
+                                 "DO UPDATE SET han = excluded.han", (*khoa, han.isoformat()))
+                    doi = True
+            elif khoa in da_den:
+                conn.execute("DELETE FROM viec_gui_den WHERE lead_id = ? AND loai = ?", khoa)
+                doi = True
             if han is None or han > hom_nay:
                 continue
-            cung = sorted(x.thoi_gian.date() for x in g if x.loai == loai)
             kq.append(ViecGui(lt, loai, han, (hom_nay - han).days, hoc_phi and loai == q.GUI_UU_DAI, len(cung),
                               cung[-1] if cung else None))
+    if doi:
+        conn.commit()
     kq.sort(key=lambda v: (v.han, v.lt.row["id"], v.loai))
     return kq
 
@@ -248,6 +264,7 @@ def ghi_da_gui(conn: sqlite3.Connection, nguoi: sqlite3.Row, lead_id: int, loai:
     if conn.execute("SELECT 1 FROM gui_thong_tin WHERE lead_id = ? AND loai = ? AND substr(thoi_gian, 1, 10) = ?",
                     (lead_id, loai, thoi_gian[:10])).fetchone():
         return False
+    conn.execute("DELETE FROM viec_gui_den WHERE lead_id = ? AND loai = ?", (lead_id, loai))
     conn.execute("INSERT INTO gui_thong_tin (lead_id, thoi_gian, loai, nguoi_gui) VALUES (?, ?, ?, ?)",
                  (lead_id, thoi_gian, loai, nguoi["id"]))
     return True

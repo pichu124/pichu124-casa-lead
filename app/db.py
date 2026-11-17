@@ -98,6 +98,12 @@ CREATE TABLE IF NOT EXISTS gui_thong_tin (
     nguoi_gui INTEGER REFERENCES nguoi_dung(id),
     ghi_chu TEXT NOT NULL DEFAULT ''
 );
+CREATE TABLE IF NOT EXISTS viec_gui_den (
+    lead_id INTEGER NOT NULL REFERENCES lead(id),
+    loai TEXT NOT NULL,
+    han TEXT NOT NULL,
+    PRIMARY KEY (lead_id, loai)
+);
 CREATE TABLE IF NOT EXISTS messenger (
     customer_id TEXT PRIMARY KEY,
     du_lieu TEXT NOT NULL,
@@ -157,7 +163,8 @@ def khoi_tao(conn: sqlite3.Connection) -> None:
         conn.execute("INSERT OR IGNORE INTO cau_hinh (khoa, gia_tri, y_nghia) VALUES (?, ?, ?)",
                      (khoa, gia_tri, q.Y_NGHIA_CAU_HINH.get(khoa, "")))
         # Ý nghĩa là chữ của app (không phải số chủ đã sửa): cập nhật theo quy tắc hiện tại
-        conn.execute("UPDATE cau_hinh SET y_nghia = ? WHERE khoa = ?", (q.Y_NGHIA_CAU_HINH.get(khoa, ""), khoa))
+        conn.execute("UPDATE cau_hinh SET y_nghia = ? WHERE khoa = ? AND y_nghia != ?",
+                     (q.Y_NGHIA_CAU_HINH.get(khoa, ""), khoa, q.Y_NGHIA_CAU_HINH.get(khoa, "")))
     if conn.execute("SELECT COUNT(*) FROM danh_muc").fetchone()[0] == 0:
         for i, (loai, gia_tri) in enumerate(q.DANH_MUC_MAU):
             if loai in LOAI_DANH_MUC:

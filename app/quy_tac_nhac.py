@@ -514,6 +514,27 @@ def han_gui_thong_tin(gd: str, co_sdt: bool, lan_cuoi: date, gui: list[LanGui],
     return ngay_lam_viec_toi((max(tt) if tt else lan_cuoi) + timedelta(days=ch["Thông tin dài hạn"]), nghi)
 
 
+def co_the_gui(loai: str, gd: str, co_sdt: bool, da_dat_coc: bool = False) -> bool:
+    """Lead còn được nhắc gửi `loai` không: ưu đãi cho lead đang chăm sóc / dài hạn chưa đặt cọc, thông tin cho lead
+    dài hạn; cả hai cần SĐT."""
+    if not co_sdt:
+        return False
+    if loai == GUI_UU_DAI:
+        return gd in (GD_DANG, GD_DAI_HAN) and not da_dat_coc
+    return gd == GD_DAI_HAN
+
+
+def han_viec_gui(han_tinh: date | None, han_da_den: date | None, gui_cung_loai: list[date], co_the: bool) -> date | None:
+    """Hạn của việc gửi hiện cho sale. Việc đã đến hạn (`han_da_den`, app ghi lại lúc nó đến hạn) mà chưa gửi thì giữ
+    nguyên tới khi sale bấm Đã gửi: không lùi khi sale ghi thêm chăm sóc (hạn tính lại xa hơn), không mất khi quá
+    cửa sổ lần 2. Hết khi có lần gửi vào hoặc sau hạn đó, hoặc lead không còn được gửi (`co_the`)."""
+    if not co_the:
+        return None
+    if han_da_den is not None and not any(g >= han_da_den for g in gui_cung_loai):
+        return min(han_da_den, han_tinh) if han_tinh else han_da_den
+    return han_tinh
+
+
 # ---------------------------------------------------------------- thống kê theo tháng
 
 BUOC_PHEU = ["Lead mới", "Đã tư vấn", "Đã tham quan", "Đã đặt cọc", "Đã nhập học"]
