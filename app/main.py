@@ -199,10 +199,8 @@ def hom_nay(request: Request):
         tat = logic.tinh(conn, logic.lead_cua(conn, nguoi, sale_id=nguoi["id"]))
         ds = [lt for lt in tat if lt.khan in ("Quá hạn", "Hôm nay")]
         ds.sort(key=lambda lt: (lt.han, lt.row["id"]))
-        noi_dung = {q.GUI_UU_DAI: db.lay_he_thong(conn, "noi_dung_uu_dai"),
-                    q.GUI_THONG_TIN: db.lay_he_thong(conn, "noi_dung_thong_tin")}
         return _ve(request, "hom_nay.html", nguoi, ds=ds, hom_nay=dongho.hom_nay(), gui=logic.viec_gui(conn, tat),
-                   noi_dung=noi_dung, ten_viec_gui=logic.TEN_VIEC_GUI, kieu_cua={v: k for k, v in logic.KIEU_GUI.items()},
+                   ten_viec_gui=logic.TEN_VIEC_GUI, kieu_cua={v: k for k, v in logic.KIEU_GUI.items()},
                    zalo=lambda sdt: "https://zalo.me/" + logic.chu_so(sdt))
     finally:
         conn.close()

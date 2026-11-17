@@ -241,7 +241,7 @@ def viec_gui(conn: sqlite3.Connection, ds: list[LeadTinh], hom_nay: date | None 
         ):
             cung = sorted(x.thoi_gian.date() for x in g if x.loai == loai)
             khoa = (lt.row["id"], loai)
-            han = q.han_viec_gui(tinh, da_den.get(khoa), cung, q.co_the_gui(loai, lt.giai_doan, co_sdt, da_coc))
+            han = q.han_viec_gui(tinh, da_den.get(khoa), cung, q.co_the_gui(loai, lt.giai_doan, co_sdt, da_coc, hoc_phi))
             # Ghi lại việc đã đến hạn để nó không lùi / mất trước khi sale bấm Đã gửi. Bỏ khi đã có lần gửi vào
             # hoặc sau hạn đó, hoặc lead thôi được gửi (chốt, dừng, đặt cọc, dài hạn thành đang chăm sóc…); riêng tạm
             # dừng thì giữ: bỏ tạm dừng là việc cũ hiện lại

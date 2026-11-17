@@ -66,7 +66,7 @@ CAU_HINH_MAC_DINH = {
     "Đầu năm học tháng": 7, "Đầu năm học ngày": 1,
     "Từ chối chưa nhu cầu": 90, "Từ chối khác": 90,
     "Ưu đãi lần đầu": 60, "Ưu đãi cách nhau": 60, "Ưu đãi tối đa": 2, "Ưu đãi lần 2 trong vòng": 180,
-    "Thông tin dài hạn": 30,
+    "Thông tin dài hạn": 30, "Ưu đãi dài hạn": 30,
     "Tuổi nhận học (tháng)": 15, "Nhắc trước tuổi nhận học": 30, "Tuổi tối đa (tháng)": 72,
     "Sau nhập học": 90,
 }
@@ -485,10 +485,11 @@ def han_gui_uu_dai(gd: str, co_sdt: bool, hoc_phi: bool, ngay_nhan: date, lan_cu
     `ngay_nhan`: ngày nhận lead. `lan_cuoi`: ngày liên hệ mới nhất (chưa liên hệ thì ngày nhận). `gui`: các lần đã gửi.
     Nhóm băn khoăn học phí: lần đầu "Ưu đãi lần đầu" ngày sau lần liên hệ cuối; tối đa "Ưu đãi tối đa" lần; lần sau
     "Ưu đãi cách nhau" ngày sau lần trước, quá "Ưu đãi lần 2 trong vòng" ngày sau lần trước mà chưa gửi thì thôi.
-    Lead khác: lần đầu "Ưu đãi lần đầu" ngày sau ngày nhận lead, rồi cứ "Ưu đãi cách nhau" ngày một lần.
+    Lead khác: chỉ khi đã dài hạn (đang chăm sóc thì sale tự quyết), "Ưu đãi dài hạn" ngày sau lần liên hệ cuối, rồi
+    cứ "Ưu đãi dài hạn" ngày một lần. `ngay_nhan` giữ cho tương thích, không dùng.
     Không gửi cho lead đã chốt, dừng, đã đặt cọc (đang chờ thư mời), hoặc không có SĐT. Hạn dời qua ngày nghỉ.
     """
-    if gd not in (GD_DANG, GD_DAI_HAN) or not co_sdt or da_dat_coc:
+    if not co_the_gui(GUI_UU_DAI, gd, co_sdt, da_dat_coc, hoc_phi):
         return None
     ud = sorted(g.thoi_gian.date() for g in gui if g.loai == GUI_UU_DAI)
     lan_dau, cach = timedelta(days=ch["Ưu đãi lần đầu"]), timedelta(days=ch["Ưu đãi cách nhau"])
@@ -500,7 +501,7 @@ def han_gui_uu_dai(gd: str, co_sdt: bool, hoc_phi: bool, ngay_nhan: date, lan_cu
         else:
             han = ud[-1] + cach
     else:
-        han = ud[-1] + cach if ud else ngay_nhan + lan_dau
+        han = (ud[-1] if ud else lan_cuoi) + timedelta(days=ch["Ưu đãi dài hạn"])
     return ngay_lam_viec_toi(han, nghi)
 
 
@@ -514,13 +515,13 @@ def han_gui_thong_tin(gd: str, co_sdt: bool, lan_cuoi: date, gui: list[LanGui],
     return ngay_lam_viec_toi((max(tt) if tt else lan_cuoi) + timedelta(days=ch["Thông tin dài hạn"]), nghi)
 
 
-def co_the_gui(loai: str, gd: str, co_sdt: bool, da_dat_coc: bool = False) -> bool:
-    """Lead còn được nhắc gửi `loai` không: ưu đãi cho lead đang chăm sóc / dài hạn chưa đặt cọc, thông tin cho lead
-    dài hạn; cả hai cần SĐT."""
+def co_the_gui(loai: str, gd: str, co_sdt: bool, da_dat_coc: bool = False, hoc_phi: bool = False) -> bool:
+    """Lead còn được nhắc gửi `loai` không: ưu đãi cho lead dài hạn, hoặc đang chăm sóc mà băn khoăn học phí, chưa
+    đặt cọc; thông tin cho lead dài hạn; cả hai cần SĐT."""
     if not co_sdt:
         return False
     if loai == GUI_UU_DAI:
-        return gd in (GD_DANG, GD_DAI_HAN) and not da_dat_coc
+        return (gd == GD_DAI_HAN or (gd == GD_DANG and hoc_phi)) and not da_dat_coc
     return gd == GD_DAI_HAN
 
 
@@ -641,11 +642,12 @@ Y_NGHIA_CAU_HINH = {
     "Đầu năm học ngày": "Ngày bắt đầu năm học",
     "Từ chối chưa nhu cầu": "Từ chối vì chưa có nhu cầu: nhắc lại sau chừng này ngày",
     "Từ chối khác": "Từ chối vì lý do khác: nhắc lại sau chừng này ngày",
-    "Ưu đãi lần đầu": "Sale gửi ưu đãi lần đầu sau chừng này ngày: nhóm băn khoăn học phí tính từ lần liên hệ cuối, lead khác từ ngày nhận lead",
+    "Ưu đãi lần đầu": "Nhóm băn khoăn học phí: sale gửi ưu đãi lần đầu sau chừng này ngày kể từ lần liên hệ cuối",
     "Ưu đãi cách nhau": "Hai lần gửi ưu đãi cách nhau ít nhất chừng này ngày",
     "Ưu đãi tối đa": "Nhóm băn khoăn học phí: gửi ưu đãi tối đa chừng này lần",
     "Ưu đãi lần 2 trong vòng": "Nhóm băn khoăn học phí: quá chừng này ngày sau lần 1 mà chưa gửi lần 2 thì thôi",
     "Thông tin dài hạn": "Lead dài hạn: sale gửi thông tin hoạt động chừng này ngày sau lần liên hệ cuối, rồi cách nhau chừng này ngày",
+    "Ưu đãi dài hạn": "Lead dài hạn (không băn khoăn học phí): sale gửi ưu đãi chừng này ngày sau lần liên hệ cuối, rồi cách nhau chừng này ngày",
     "Tuổi nhận học (tháng)": "Bé nhỏ hơn tuổi này (tháng) thì chờ, nhắc khi bé sắp đủ tuổi",
     "Nhắc trước tuổi nhận học": "Nhắc trước ngày bé đủ tuổi nhận học chừng này ngày",
     "Tuổi tối đa (tháng)": "Bé đủ tuổi này (tháng) thì nhắc sale hỏi phụ huynh về em nhỏ",

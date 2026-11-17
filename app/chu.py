@@ -280,8 +280,6 @@ def cai_dat(request: Request, tb: str = ""):
         return _ve(request, "chu_cai_dat.html", nguoi, tb=tb, tg_cau_hinh=telegram.da_cau_hinh(),
                    nhom=db.lay_he_thong(conn, "telegram_nhom"), nhom_ten=db.lay_he_thong(conn, "telegram_nhom_ten"),
                    nhom_ma=db.lay_he_thong(conn, "telegram_nhom_ma"),
-                   noi_dung_uu_dai=db.lay_he_thong(conn, "noi_dung_uu_dai"),
-                   noi_dung_thong_tin=db.lay_he_thong(conn, "noi_dung_thong_tin"),
                    cau_hinh=list(conn.execute("SELECT * FROM cau_hinh ORDER BY rowid")),
                    ngay_nghi=list(conn.execute("SELECT * FROM ngay_nghi ORDER BY ngay")),
                    danh_muc={l: db.danh_muc(conn, l) for l in db.LOAI_DANH_MUC})
@@ -317,10 +315,6 @@ async def luu_cai_dat(request: Request):
                 if khoa not in sai and v != cu[khoa]:
                     conn.execute("UPDATE cau_hinh SET gia_tri = ? WHERE khoa = ?", (v, khoa))
             tb = "Đã lưu số ngày nhắc." + (f" Bỏ qua ô không hợp lệ: {', '.join(sai)}." if sai else "")
-        elif viec == "noi_dung_gui":
-            for khoa in ("noi_dung_uu_dai", "noi_dung_thong_tin"):
-                db.dat_he_thong(conn, khoa, (form.get(khoa) or "").strip()[:2000])
-            tb = "Đã lưu nội dung mẫu cho sale gửi."
         elif viec == "them_ngay_nghi":
             loi: list[str] = []
             ngay = _ngay_nhap(form, "ngay", loi, "Ngày nghỉ")

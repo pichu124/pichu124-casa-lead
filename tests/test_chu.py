@@ -41,8 +41,7 @@ def test_sale_khong_post_duoc_man_cua_chu(du_lieu):
     c = dang_nhap("sale1")
     ma = csrf(c, "/tai-khoan")
     lead = id_lead("Đào Thử")
-    for url, data in [(f"/chu/nhac-sale/{lead}", {}), ("/chu/cai-dat", {"viec": "cau_hinh", "ch_L1": "9"}),
-                      ("/chu/cai-dat", {"viec": "noi_dung_gui", "noi_dung_uu_dai": "x"})]:
+    for url, data in [(f"/chu/nhac-sale/{lead}", {}), ("/chu/cai-dat", {"viec": "cau_hinh", "ch_L1": "9"})]:
         assert c.post(url, data={"csrf": ma, **data}, follow_redirects=False).status_code == 403
     assert _sql("SELECT gia_tri FROM cau_hinh WHERE khoa = 'L1'")[0][0] == 1
     assert not _sql("SELECT * FROM gui_thong_tin")

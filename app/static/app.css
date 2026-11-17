@@ -254,8 +254,6 @@ dl.bang.ghi-chu-bot dd:last-child { margin-bottom: 0; }
 .viec-gui h2 { font-size: 17px; margin: 0 0 4px; }
 .the-gui { cursor: default; }
 .the-gui:active { background: var(--mat); }
-.noi-dung-gui { margin: 8px 0 0; font-size: 14px; }
-.noi-dung-gui summary { color: var(--xanh); cursor: pointer; }
 .nut-gui { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .nut-gui form { margin: 0; }
 .nut-gui .nut, .nut-gui button { min-height: 40px; padding: 6px 14px; }

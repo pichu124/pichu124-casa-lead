@@ -3,9 +3,9 @@
 {% block noi_dung %}
 <a class="quay-lai" href="/chu">Quản trị</a>
 <h1>{{ tieu_de }} <small>{{ ds|length }} phụ huynh</small></h1>
-<p class="nho">{% if kieu == 'uu-dai' %}Phụ huynh đã đến hạn nhận ưu đãi học phí.{% else %}Lead dài hạn đã đến lượt nhận tin hoạt động của trường.{% endif %}
-  Sale gửi qua Zalo và bấm Đã gửi ở tab Hôm nay của mình; phụ huynh còn ở đây là sale chưa gửi. Quá hạn lâu nhất lên đầu.
-  Nội dung mẫu sửa ở <a href="/chu/cai-dat">Cài đặt</a>.</p>
+<p class="nho">{% if kieu == 'uu-dai' %}Phụ huynh đã đến hạn nhận ưu đãi học phí (lead dài hạn, hoặc băn khoăn học phí).{% else %}Lead dài hạn đã đến lượt nhận tin hoạt động của trường.{% endif %}
+  Sale tự viết ưu đãi / thông tin của cơ sở mình, gửi qua Zalo và bấm Đã gửi ở tab Hôm nay; phụ huynh còn ở đây là sale
+  chưa gửi. Quá hạn lâu nhất lên đầu.</p>
 <form class="tim" method="get" action="/chu/gui/{{ kieu }}">
   <select name="co_so" aria-label="Cơ sở"><option value="">Mọi cơ sở</option>
     {% for c in ds_co_so %}<option {{ 'selected' if c == co_so }}>{{ c }}</option>{% endfor %}</select>

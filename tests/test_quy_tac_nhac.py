@@ -230,9 +230,10 @@ class ChuTuGui(unittest.TestCase):
         self.assertIsNone(self.han(g=g1, hom_nay=D(2027, 5, 1)))  # quá 180 ngày sau lần 1: thôi
         self.assertIsNone(self.han(g=self.ud((2026, 11, 1), (2027, 1, 5)), hom_nay=D(2027, 6, 1)))  # đủ 2 lần
 
-    def test_lead_thuong_lan_dau_60_ngay_sau_nhan_lead_roi_60_ngay_mot_lan(self):
-        self.assertEqual(self.han(gd=q.GD_DANG, hp=False, nhan=D(2026, 11, 1)), D(2026, 12, 31))
-        self.assertEqual(self.han(gd=q.GD_DANG, hp=False, nhan=D(2026, 8, 1), g=self.ud((2026, 9, 6))), D(2026, 11, 5))
+    def test_lead_thuong_chi_khi_dai_han_30_ngay_sau_lan_lien_he_cuoi_roi_30_ngay_mot_lan(self):
+        self.assertIsNone(self.han(gd=q.GD_DANG, hp=False, nhan=D(2026, 8, 1)))  # đang chăm sóc: sale tự quyết
+        self.assertEqual(self.han(hp=False, lc=D(2026, 10, 5)), D(2026, 11, 4))
+        self.assertEqual(self.han(hp=False, lc=D(2026, 9, 1), g=self.ud((2026, 10, 5))), D(2026, 11, 4))
 
     def test_khong_gui(self):
         for gd, sdt, coc in ((q.GD_CHOT, True, False), (q.GD_DUNG, True, False), (q.GD_DANG, False, False), (q.GD_DANG, True, True)):
@@ -251,9 +252,11 @@ class ChuTuGui(unittest.TestCase):
         self.assertEqual(q.han_viec_gui(D(2026, 11, 16), None, [], True), D(2026, 11, 16))
 
     def test_co_the_gui(self):
-        self.assertTrue(q.co_the_gui(q.GUI_UU_DAI, q.GD_DANG, True))
-        self.assertFalse(q.co_the_gui(q.GUI_UU_DAI, q.GD_DANG, True, da_dat_coc=True))
-        self.assertFalse(q.co_the_gui(q.GUI_UU_DAI, q.GD_CHOT, True))
+        self.assertTrue(q.co_the_gui(q.GUI_UU_DAI, q.GD_DANG, True, hoc_phi=True))
+        self.assertFalse(q.co_the_gui(q.GUI_UU_DAI, q.GD_DANG, True))  # lead thường đang chăm sóc
+        self.assertTrue(q.co_the_gui(q.GUI_UU_DAI, q.GD_DAI_HAN, True))
+        self.assertFalse(q.co_the_gui(q.GUI_UU_DAI, q.GD_DAI_HAN, True, da_dat_coc=True))
+        self.assertFalse(q.co_the_gui(q.GUI_UU_DAI, q.GD_CHOT, True, hoc_phi=True))
         self.assertTrue(q.co_the_gui(q.GUI_THONG_TIN, q.GD_DAI_HAN, True))
         self.assertFalse(q.co_the_gui(q.GUI_THONG_TIN, q.GD_DANG, True))
         self.assertFalse(q.co_the_gui(q.GUI_THONG_TIN, q.GD_DAI_HAN, False))
