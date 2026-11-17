@@ -118,7 +118,9 @@ def chay(conn: sqlite3.Connection, hom_nay: date, thu: bool = False, gui=None) -
         except Exception:  # noqa: BLE001
             log.exception("Đồng bộ lead Messenger lỗi; tin nhắc dùng dữ liệu cũ")
     chu = conn.execute("SELECT * FROM nguoi_dung WHERE vai_tro = 'chu' AND dang_lam = 1 ORDER BY id").fetchone()
-    if chu is not None and not thu:
+    if chu is None:
+        log.warning("Không có tài khoản chủ đang làm: bỏ qua bước ghi lại việc gửi đến hạn của mọi lead")
+    elif not thu:
         # Ghi lại việc gửi vừa đến hạn của MỌI lead (cả lead chưa giao, của sale đã nghỉ), kẻo chưa ai mở app
         # thì ghi chăm sóc làm hạn lùi mất
         logic.viec_gui(conn, logic.tinh(conn, logic.lead_cua(conn, chu), hom_nay), hom_nay)

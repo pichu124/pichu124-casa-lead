@@ -242,13 +242,15 @@ def viec_gui(conn: sqlite3.Connection, ds: list[LeadTinh], hom_nay: date | None 
             cung = sorted(x.thoi_gian.date() for x in g if x.loai == loai)
             khoa = (lt.row["id"], loai)
             han = q.han_viec_gui(tinh, da_den.get(khoa), cung, q.co_the_gui(loai, lt.giai_doan, co_sdt, da_coc))
-            # Ghi lại việc đã đến hạn để nó không lùi / mất trước khi sale bấm Đã gửi (kể cả qua lúc tạm dừng);
-            # chỉ bỏ khi đã có lần gửi vào hoặc sau hạn đó
+            # Ghi lại việc đã đến hạn để nó không lùi / mất trước khi sale bấm Đã gửi. Bỏ khi đã có lần gửi vào
+            # hoặc sau hạn đó, hoặc lead thôi được gửi (chốt, dừng, đặt cọc, dài hạn thành đang chăm sóc…); riêng tạm
+            # dừng thì giữ: bỏ tạm dừng là việc cũ hiện lại
             if ghi and han is not None and han <= hom_nay and da_den.get(khoa) != han:
                 conn.execute("INSERT INTO viec_gui_den (lead_id, loai, han) VALUES (?, ?, ?) ON CONFLICT(lead_id, loai) "
                              "DO UPDATE SET han = excluded.han", (*khoa, han.isoformat()))
                 doi = True
-            elif ghi and khoa in da_den and any(x >= da_den[khoa] for x in cung):
+            elif ghi and khoa in da_den and ((han is None and not lt.row["tam_dung"])
+                                             or any(x >= da_den[khoa] for x in cung)):
                 conn.execute("DELETE FROM viec_gui_den WHERE lead_id = ? AND loai = ?", khoa)
                 doi = True
             if han is None or han > hom_nay:

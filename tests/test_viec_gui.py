@@ -123,3 +123,24 @@ def test_tin_nhac_sang_ghi_lai_viec_cua_lead_chua_giao(du_lieu):
     conn.commit()
     nhac_sang.chay(conn, date(2026, 11, 4))
     assert conn.execute("SELECT han FROM viec_gui_den WHERE lead_id = ?", (lid,)).fetchone()[0] == "2026-09-30"
+
+
+def test_dai_han_sang_dang_cham_soc_roi_ve_dai_han_khong_hien_viec_cu(du_lieu):
+    """Lead dài hạn có việc gửi thông tin quá hạn, rồi đang chăm sóc (thôi gửi thông tin), rồi lại dài hạn:
+    hạn mới tính từ lần liên hệ mới, không lôi việc cũ quá hạn 30+ ngày về."""
+    lid = id_lead("Hoa Thử")
+    conn = db.ket_noi()
+    conn.execute("DELETE FROM cham_soc WHERE lead_id = ?", (lid,))
+    conn.execute("INSERT INTO cham_soc (lead_id, thoi_gian, sale_id, phuong_thuc, tinh_trang, ly_do_tu_choi) "
+                 "SELECT ?, '2026-09-01 09:00:00', sale_id, 'Gọi điện', 'Từ chối', 'Chưa có nhu cầu' FROM lead WHERE id = ?",
+                 (lid, lid))
+    conn.commit()
+    s = dang_nhap("sale1")
+    assert "Gửi thông tin hoạt động" in s.get("/hom-nay").text  # hạn 01/10: đã ghi lại
+    ma = csrf(s, f"/lead/{lid}/ghi-nhan")
+    s.post(f"/lead/{lid}/ghi-nhan", data={"csrf": ma, "phuong_thuc": "Gọi điện", "tinh_trang": "Đang cân nhắc",
+                                          "muc_quan_tam": "Quan tâm bình thường", "hen_lai_sau": "1 tuần"})
+    assert "Gửi thông tin hoạt động" not in s.get("/hom-nay").text
+    s.post(f"/lead/{lid}/ghi-nhan", data={"csrf": ma, "phuong_thuc": "Gọi điện", "tinh_trang": "Từ chối",
+                                          "ly_do_tu_choi": "Chưa có nhu cầu"})
+    assert "Gửi thông tin hoạt động" not in s.get("/hom-nay").text  # hạn mới 04/12
