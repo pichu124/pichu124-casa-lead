@@ -86,3 +86,40 @@ def test_qua_han_roi_ghi_them_cham_soc_van_con_nhac(du_lieu):
     assert "Hoa Thử" in dang_nhap("chu").get("/chu/gui/uu-dai").text
     s.post(f"/lead/{lid}/da-gui", data={"csrf": csrf(s, "/lead-moi"), "kieu": "uu-dai"})
     assert "Gửi ưu đãi học phí" not in s.get("/hom-nay").text
+
+
+def _qua_han_roi_ghi_cham_soc():
+    lid = _den_han()
+    s = dang_nhap("sale1")
+    s.get("/hom-nay")  # việc đến hạn được ghi lại
+    s.post(f"/lead/{lid}/ghi-nhan", data={"csrf": csrf(s, f"/lead/{lid}/ghi-nhan"), "phuong_thuc": "Gọi điện",
+                                          "tinh_trang": "Đang cân nhắc", "muc_quan_tam": "Quan tâm bình thường",
+                                          "phan_hoi": "Hỏi lại học phí"})
+    return lid, s
+
+
+def test_chay_thu_tin_nhac_ngay_cu_khong_lam_mat_viec(du_lieu):
+    _, s = _qua_han_roi_ghi_cham_soc()
+    nhac_sang.chay(db.ket_noi(), date(2026, 9, 25), thu=True)
+    nhac_sang.chay(db.ket_noi(), date(2026, 9, 25))
+    assert "quá hạn 35 ngày" in s.get("/hom-nay").text
+
+
+def test_tam_dung_roi_bo_tam_dung_viec_van_con(du_lieu):
+    lid, s = _qua_han_roi_ghi_cham_soc()
+    conn = db.ket_noi()
+    conn.execute("UPDATE lead SET tam_dung = 1 WHERE id = ?", (lid,))
+    conn.commit()
+    assert "Gửi ưu đãi học phí" not in s.get("/hom-nay").text
+    conn.execute("UPDATE lead SET tam_dung = 0 WHERE id = ?", (lid,))
+    conn.commit()
+    assert "quá hạn 35 ngày" in s.get("/hom-nay").text
+
+
+def test_tin_nhac_sang_ghi_lai_viec_cua_lead_chua_giao(du_lieu):
+    lid = _den_han()
+    conn = db.ket_noi()
+    conn.execute("UPDATE lead SET sale_id = NULL WHERE id = ?", (lid,))
+    conn.commit()
+    nhac_sang.chay(conn, date(2026, 11, 4))
+    assert conn.execute("SELECT han FROM viec_gui_den WHERE lead_id = ?", (lid,)).fetchone()[0] == "2026-09-30"

@@ -38,7 +38,7 @@ def _viec_cua(conn: sqlite3.Connection, nguoi: sqlite3.Row, hom_nay: date) -> tu
     """(lead cần liên hệ hôm nay hoặc quá hạn, việc gửi ưu đãi / thông tin đã đến hạn) của một sale."""
     tat = logic.tinh(conn, logic.lead_cua(conn, nguoi), hom_nay)
     ds = sorted((lt for lt in tat if lt.khan in ("Quá hạn", "Hôm nay")), key=lambda lt: (lt.han, lt.row["id"]))
-    return ds, logic.viec_gui(conn, tat, hom_nay)
+    return ds, logic.viec_gui(conn, tat, hom_nay, ghi=False)
 
 
 def tin_cho_sale(conn: sqlite3.Connection, sale: sqlite3.Row, hom_nay: date) -> str | None:
@@ -117,6 +117,11 @@ def chay(conn: sqlite3.Connection, hom_nay: date, thu: bool = False, gui=None) -
             messenger.dong_bo(conn)
         except Exception:  # noqa: BLE001
             log.exception("Đồng bộ lead Messenger lỗi; tin nhắc dùng dữ liệu cũ")
+    chu = conn.execute("SELECT * FROM nguoi_dung WHERE vai_tro = 'chu' AND dang_lam = 1 ORDER BY id").fetchone()
+    if chu is not None and not thu:
+        # Ghi lại việc gửi vừa đến hạn của MỌI lead (cả lead chưa giao, của sale đã nghỉ), kẻo chưa ai mở app
+        # thì ghi chăm sóc làm hạn lùi mất
+        logic.viec_gui(conn, logic.tinh(conn, logic.lead_cua(conn, chu), hom_nay), hom_nay)
     nhom = db.lay_he_thong(conn, "telegram_nhom")
     if nhom:
         tin = tin_cho_nhom(conn, hom_nay)

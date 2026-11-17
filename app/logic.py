@@ -207,8 +207,13 @@ TEN_VIEC_GUI = {q.GUI_UU_DAI: "Gửi ưu đãi học phí", q.GUI_THONG_TIN: "G�
 KIEU_GUI = {"uu-dai": q.GUI_UU_DAI, "thong-tin": q.GUI_THONG_TIN}
 
 
-def viec_gui(conn: sqlite3.Connection, ds: list[LeadTinh], hom_nay: date | None = None) -> list[ViecGui]:
-    """Việc gửi đã đến hạn (hạn <= hôm nay) của các lead `ds`: còn đó tới khi sale bấm Đã gửi. Quá hạn lâu nhất lên đầu."""
+def viec_gui(conn: sqlite3.Connection, ds: list[LeadTinh], hom_nay: date | None = None,
+             ghi: bool = True) -> list[ViecGui]:
+    """Việc gửi đã đến hạn (hạn <= hôm nay) của các lead `ds`: còn đó tới khi sale bấm Đã gửi. Quá hạn lâu nhất lên đầu.
+
+    Việc vừa đến hạn được ghi vào `viec_gui_den` (để không lùi / mất trước khi gửi), chỉ khi `ghi` và tính cho hôm
+    nay thật: chạy thử tin nhắc hay tính cho một ngày khác không được đổi bảng này."""
+    ghi = ghi and (hom_nay is None or hom_nay == _hom_nay())
     hom_nay = hom_nay or _hom_nay()
     if not ds:
         return []
@@ -237,13 +242,13 @@ def viec_gui(conn: sqlite3.Connection, ds: list[LeadTinh], hom_nay: date | None 
             cung = sorted(x.thoi_gian.date() for x in g if x.loai == loai)
             khoa = (lt.row["id"], loai)
             han = q.han_viec_gui(tinh, da_den.get(khoa), cung, q.co_the_gui(loai, lt.giai_doan, co_sdt, da_coc))
-            # Ghi lại việc đã đến hạn để nó không lùi / mất trước khi sale bấm Đã gửi; bỏ khi đã xong hoặc thôi gửi
-            if han is not None and han <= hom_nay:
-                if da_den.get(khoa) != han:
-                    conn.execute("INSERT INTO viec_gui_den (lead_id, loai, han) VALUES (?, ?, ?) ON CONFLICT(lead_id, loai) "
-                                 "DO UPDATE SET han = excluded.han", (*khoa, han.isoformat()))
-                    doi = True
-            elif khoa in da_den:
+            # Ghi lại việc đã đến hạn để nó không lùi / mất trước khi sale bấm Đã gửi (kể cả qua lúc tạm dừng);
+            # chỉ bỏ khi đã có lần gửi vào hoặc sau hạn đó
+            if ghi and han is not None and han <= hom_nay and da_den.get(khoa) != han:
+                conn.execute("INSERT INTO viec_gui_den (lead_id, loai, han) VALUES (?, ?, ?) ON CONFLICT(lead_id, loai) "
+                             "DO UPDATE SET han = excluded.han", (*khoa, han.isoformat()))
+                doi = True
+            elif ghi and khoa in da_den and any(x >= da_den[khoa] for x in cung):
                 conn.execute("DELETE FROM viec_gui_den WHERE lead_id = ? AND loai = ?", khoa)
                 doi = True
             if han is None or han > hom_nay:
