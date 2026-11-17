@@ -41,8 +41,8 @@ def test_sale_khong_post_duoc_man_cua_chu(du_lieu):
     c = dang_nhap("sale1")
     ma = csrf(c, "/tai-khoan")
     lead = id_lead("Đào Thử")
-    for url, data in [(f"/chu/nhac-sale/{lead}", {}), ("/chu/gui/uu-dai", {"lead_id": lead}),
-                      ("/chu/cai-dat", {"viec": "cau_hinh", "ch_L1": "9"})]:
+    for url, data in [(f"/chu/nhac-sale/{lead}", {}), ("/chu/cai-dat", {"viec": "cau_hinh", "ch_L1": "9"}),
+                      ("/chu/cai-dat", {"viec": "noi_dung_gui", "noi_dung_uu_dai": "x"})]:
         assert c.post(url, data={"csrf": ma, **data}, follow_redirects=False).status_code == 403
     assert _sql("SELECT gia_tri FROM cau_hinh WHERE khoa = 'L1'")[0][0] == 1
     assert not _sql("SELECT * FROM gui_thong_tin")
@@ -89,22 +89,12 @@ def test_nhac_sale_khong_chuyen_huong_ra_ngoai(du_lieu):
     assert r.headers["location"].startswith("/chu/bo-quen?")
 
 
-def test_gui_uu_dai_danh_dau_roi_bien_khoi_danh_sach(du_lieu):
-    c = dang_nhap("chu")
-    assert "Hoa Thử" in _ten_trong(c.get("/chu/gui/uu-dai").text)
-    lead = id_lead("Hoa Thử")
-    r = c.post("/chu/gui/uu-dai", data={"csrf": csrf(c, "/chu/gui/uu-dai"), "lead_id": [str(lead), "999999"]})
-    assert "Đã ghi 1 phụ huynh đã gửi." in r.text
-    assert "Hoa Thử" not in _ten_trong(r.text)  # vừa gửi, chưa đủ số ngày cách nhau
-    g = _sql("SELECT loai FROM gui_thong_tin WHERE lead_id = ?", (lead,))
-    assert [x[0] for x in g] == [q.GUI_UU_DAI]
-    assert not du_lieu  # app không tự nhắn ai
-
-
 def test_gui_thong_tin_chi_lead_dai_han(du_lieu):
+    # Long Thử (dài hạn) liên hệ lần cuối hơn 30 ngày trước: đến hạn nhận thông tin hoạt động
+    _sql("UPDATE cham_soc SET thoi_gian = datetime(thoi_gian, '-60 days') WHERE lead_id = ?", (id_lead("Long Thử"),))
     html = dang_nhap("chu").get("/chu/gui/thong-tin").text
     assert "Long Thử" in _ten_trong(html)
-    giai_doan = re.findall(r"<div class=\"nho\">[^·<]*· ([^·<]+?) ·", html)
+    giai_doan = re.findall(r"<div class=\"nho\">[^·<]*· ([^·<]+?) · hạn", html)
     assert giai_doan and set(giai_doan) == {q.GD_DAI_HAN}
 
 
@@ -265,15 +255,6 @@ def test_cho_nghi_viec_thi_go_noi_telegram(du_lieu):
 def test_theo_sale_hien_sale_da_nghi_con_giu_lead(du_lieu):
     _sql("UPDATE nguoi_dung SET dang_lam = 0 WHERE ten_dang_nhap = 'sale1'")
     assert "Sale 1 (đã nghỉ)" in dang_nhap("chu").get("/chu/theo-sale").text
-
-
-def test_gui_uu_dai_khong_ghi_trung(du_lieu):
-    c = dang_nhap("chu")
-    lead = str(id_lead("Hoa Thử"))
-    ma = csrf(c, "/chu/gui/uu-dai")
-    c.post("/chu/gui/uu-dai", data={"csrf": ma, "lead_id": [lead, lead]})
-    c.post("/chu/gui/uu-dai", data={"csrf": ma, "lead_id": [lead]})
-    assert len(_sql("SELECT * FROM gui_thong_tin WHERE lead_id = ?", (lead,))) == 1
 
 
 def test_xuat_cham_soc_co_lan_thu_va_han_lien_he_tiep(du_lieu):

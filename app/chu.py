@@ -2,7 +2,7 @@
 Báo cáo tháng, Cài đặt (số ngày nhắc, ngày nghỉ, danh mục), xuất CSV.
 
 Mọi đường ở đây chỉ chủ vào được (`_chu`). Danh sách gửi ưu đãi / thông tin và phễu tháng dùng thẳng
-hàm của bộ quy tắc (`nen_gui_uu_dai`, `nen_gui_thong_tin`, `thong_ke_thang`).
+hàm của bộ quy tắc (`han_gui_uu_dai`, `han_gui_thong_tin` qua `logic.viec_gui`, `thong_ke_thang`).
 """
 
 from __future__ import annotations
@@ -194,37 +194,13 @@ def theo_sale(request: Request):
 
 # ------------------------------------------------------------------ gửi ưu đãi, gửi thông tin
 
-def _ds_gui(conn: sqlite3.Connection, nguoi: sqlite3.Row, loai: str, co_so: str) -> list[dict]:
-    ch, hom_nay = logic.cau_hinh(conn), dongho.hom_nay()
-    gui: dict[int, list[q.LanGui]] = {}
-    for g in conn.execute("SELECT lead_id, thoi_gian, loai FROM gui_thong_tin"):
-        gui.setdefault(g["lead_id"], []).append(q.LanGui(dongho.doc_gio(g["thoi_gian"]), g["loai"]))
-    kq = []
-    for lt in _tat_ca(conn, nguoi, co_so):
-        g = gui.get(lt.row["id"], [])
-        co_sdt = len(logic.chu_so(lt.row["sdt"])) >= 9
-        if loai == q.GUI_UU_DAI:
-            cuoi = logic.lan_cham_soc(lt.lan_cuoi) if lt.lan_cuoi else None
-            hoc_phi = q.bang_khoan_hoc_phi(cuoi, lt.row["ly_do_chat_luong"], [c["phan_hoi"] for c in lt.lich_su])
-            lan_cuoi = dongho.doc_gio(lt.lan_cuoi["thoi_gian"] if lt.lan_cuoi else lt.row["ngay_nhan"])
-            da_coc = bool(lt.lan_cuoi) and lt.lan_cuoi["tinh_trang"] == q.DAT_COC
-            if not q.nen_gui_uu_dai(lt.giai_doan, co_sdt, hoc_phi, lan_cuoi, g, hom_nay, ch, da_coc):
-                continue
-        else:
-            hoc_phi = False
-            if not q.nen_gui_thong_tin(lt.giai_doan, co_sdt, g, hom_nay, ch):
-                continue
-        cung_loai = sorted(x.thoi_gian for x in g if x.loai == loai)
-        kq.append(dict(lt=lt, hoc_phi=hoc_phi, so_lan=len(cung_loai), lan_cuoi=cung_loai[-1] if cung_loai else None))
-    kq.sort(key=lambda x: (not x["hoc_phi"], x["lt"].row["co_so"], x["lt"].row["ten_ph"]))
-    return kq
-
-
-LOAI_GUI = {"uu-dai": (q.GUI_UU_DAI, "Gửi ưu đãi"), "thong-tin": (q.GUI_THONG_TIN, "Gửi thông tin")}
+LOAI_GUI = {"uu-dai": (q.GUI_UU_DAI, "Theo dõi gửi ưu đãi"), "thong-tin": (q.GUI_THONG_TIN, "Theo dõi gửi thông tin")}
 
 
 @router.get("/gui/{kieu}", response_class=HTMLResponse)
-def ds_gui(request: Request, kieu: str, co_so: str = "", tb: str = ""):
+def ds_gui(request: Request, kieu: str, co_so: str = ""):
+    """Chủ theo dõi: phụ huynh đã đến hạn nhận ưu đãi / thông tin, sale nào phụ trách, quá hạn bao lâu.
+    Sale gửi và bấm Đã gửi ở tab Hôm nay của mình."""
     if kieu not in LOAI_GUI:
         raise KhongThay()
     loai, tieu_de = LOAI_GUI[kieu]
@@ -232,36 +208,9 @@ def ds_gui(request: Request, kieu: str, co_so: str = "", tb: str = ""):
     try:
         nguoi = _nguoi(request, conn)
         _chu(nguoi)
-        return _ve(request, "chu_gui.html", nguoi, ds=_ds_gui(conn, nguoi, loai, co_so), kieu=kieu, loai=loai,
-                   tieu_de=tieu_de, co_so=co_so, ds_co_so=db.danh_muc(conn, "Cơ sở"), tb=tb)
-    finally:
-        conn.close()
-
-
-@router.post("/gui/{kieu}")
-async def da_gui(request: Request, kieu: str):
-    if kieu not in LOAI_GUI:
-        raise KhongThay()
-    loai, _ = LOAI_GUI[kieu]
-    form = await _bieu_mau(request)
-    conn = _conn()
-    try:
-        nguoi = _nguoi(request, conn)
-        _chu(nguoi)
-        ids = sorted({int(x) for x in form.getlist("lead_id") if x.isdigit()})
-        bay_gio = dongho.ghi_gio(dongho.bay_gio())
-        so = 0
-        for i in ids:
-            # bấm Lưu hai lần hoặc gửi lại biểu mẫu: không ghi thêm lần gửi trong cùng ngày (kẻo hết lượt ưu đãi)
-            da_co = conn.execute("SELECT 1 FROM gui_thong_tin WHERE lead_id = ? AND loai = ? AND substr(thoi_gian, 1, 10) = ?",
-                                 (i, loai, bay_gio[:10])).fetchone()
-            if not da_co and logic.mot_lead(conn, nguoi, i) is not None:
-                conn.execute("INSERT INTO gui_thong_tin (lead_id, thoi_gian, loai, nguoi_gui) VALUES (?, ?, ?, ?)",
-                             (i, bay_gio, loai, nguoi["id"]))
-                so += 1
-        conn.commit()
-        tb = f"Đã ghi {so} phụ huynh đã gửi." if so else "Chưa chọn phụ huynh nào."
-        return _ve_lai(f"/chu/gui/{kieu}?{urlencode({'tb': tb, 'co_so': form.get('co_so') or ''})}")
+        ds = [v for v in logic.viec_gui(conn, _tat_ca(conn, nguoi, co_so)) if v.loai == loai]
+        return _ve(request, "chu_gui.html", nguoi, ds=ds, kieu=kieu, tieu_de=tieu_de, co_so=co_so,
+                   ds_co_so=db.danh_muc(conn, "Cơ sở"))
     finally:
         conn.close()
 
@@ -331,6 +280,8 @@ def cai_dat(request: Request, tb: str = ""):
         return _ve(request, "chu_cai_dat.html", nguoi, tb=tb, tg_cau_hinh=telegram.da_cau_hinh(),
                    nhom=db.lay_he_thong(conn, "telegram_nhom"), nhom_ten=db.lay_he_thong(conn, "telegram_nhom_ten"),
                    nhom_ma=db.lay_he_thong(conn, "telegram_nhom_ma"),
+                   noi_dung_uu_dai=db.lay_he_thong(conn, "noi_dung_uu_dai"),
+                   noi_dung_thong_tin=db.lay_he_thong(conn, "noi_dung_thong_tin"),
                    cau_hinh=list(conn.execute("SELECT * FROM cau_hinh ORDER BY rowid")),
                    ngay_nghi=list(conn.execute("SELECT * FROM ngay_nghi ORDER BY ngay")),
                    danh_muc={l: db.danh_muc(conn, l) for l in db.LOAI_DANH_MUC})
@@ -366,6 +317,10 @@ async def luu_cai_dat(request: Request):
                 if khoa not in sai and v != cu[khoa]:
                     conn.execute("UPDATE cau_hinh SET gia_tri = ? WHERE khoa = ?", (v, khoa))
             tb = "Đã lưu số ngày nhắc." + (f" Bỏ qua ô không hợp lệ: {', '.join(sai)}." if sai else "")
+        elif viec == "noi_dung_gui":
+            for khoa in ("noi_dung_uu_dai", "noi_dung_thong_tin"):
+                db.dat_he_thong(conn, khoa, (form.get(khoa) or "").strip()[:2000])
+            tb = "Đã lưu nội dung mẫu cho sale gửi."
         elif viec == "them_ngay_nghi":
             loi: list[str] = []
             ngay = _ngay_nhap(form, "ngay", loi, "Ngày nghỉ")

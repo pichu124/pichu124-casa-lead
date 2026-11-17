@@ -29,6 +29,17 @@
   <p class="nho">Tin trong nhóm có tên phụ huynh và tên bé (không có SĐT): chỉ để trong nhóm những người được xem toàn bộ lead.</p>
 </section>
 <section class="hop">
+  <h2>Nội dung sale gửi phụ huynh</h2>
+  <p class="nho">Sale thấy việc "Gửi ưu đãi" / "Gửi thông tin" ở tab Hôm nay, bấm Chép nội dung rồi dán vào Zalo. Để trống thì sale tự soạn.</p>
+  <form class="bieu-mau" method="post" action="/chu/cai-dat">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="viec" value="noi_dung_gui">
+    <label>Ưu đãi học phí hiện tại <textarea name="noi_dung_uu_dai" rows="4" maxlength="2000" placeholder="vd Tháng 11: giảm 10% học phí 3 tháng đầu cho bé nhập học trước 31/12…">{{ noi_dung_uu_dai }}</textarea></label>
+    <label>Thông tin hoạt động hiện tại <textarea name="noi_dung_thong_tin" rows="4" maxlength="2000" placeholder="vd Mời Ba/Mẹ dự hội thảo &quot;Montessori tại nhà&quot; 9h sáng thứ 7 30/11…">{{ noi_dung_thong_tin }}</textarea></label>
+    <button class="chinh">Lưu nội dung</button>
+  </form>
+</section>
+
+<section class="hop">
   <h2>Số ngày nhắc</h2>
   <form class="bieu-mau" method="post" action="/chu/cai-dat">
     <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="viec" value="cau_hinh">

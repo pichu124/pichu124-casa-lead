@@ -3,7 +3,7 @@
 App web nhắc sale tuyển sinh của Casa dei Bambini (3 cơ sở, Hà Nội) gọi đúng phụ huynh vào đúng ngày, và lưu lại mọi lần chăm sóc. Thay cho bản AppSheet: sale đăng nhập bằng tài khoản app cấp, không cần tài khoản Google hay email `@cdb.edu.vn`, chạy trên VPS của trường nên không tốn phí theo tháng.
 
 - **Sale** (điện thoại): Hôm nay, Của tôi, chi tiết lead, ghi nhận lần chăm sóc, thêm lead, tạo lead cho em. Chỉ thấy lead mình phụ trách.
-- **Chủ**: thấy tất cả lead, giao lead, quản lý tài khoản. (Đợt B: lead Messenger, bỏ quên, nhắc sale, gửi ưu đãi / thông tin, báo cáo.)
+- **Chủ**: thấy tất cả lead, giao lead, quản lý tài khoản. (Đợt B: lead Messenger, bỏ quên, nhắc sale, theo dõi gửi ưu đãi / thông tin, báo cáo.) Gửi ưu đãi / thông tin là việc của sale: đến hạn thì hiện ở tab Hôm nay (mở Zalo, chép nội dung mẫu chủ soạn ở Cài đặt, bấm Đã gửi) và còn nhắc tới khi bấm Đã gửi.
 - **Nhắc mỗi sáng 8:00, thứ 2 – thứ 6** qua Telegram (bot riêng của app). Tin không bao giờ chứa SĐT.
 
 ## Quy tắc nhắc

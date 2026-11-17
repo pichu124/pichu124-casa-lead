@@ -249,3 +249,13 @@ dl.bang.ghi-chu-bot dd:last-child { margin-bottom: 0; }
 .canh-bao { background: var(--gach); color: #fff; border-radius: var(--bo-nho); padding: 11px 14px; margin: 0 0 14px; font-size: 15px; }
 .canh-bao a { color: #fff; font-weight: 600; }
 .hop h3 { font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--phu); margin: 16px 0 0; }
+/* Việc gửi ưu đãi / thông tin của sale (tab Hôm nay) */
+.viec-gui { margin: 0 0 22px; }
+.viec-gui h2 { font-size: 17px; margin: 0 0 4px; }
+.the-gui { cursor: default; }
+.the-gui:active { background: var(--mat); }
+.noi-dung-gui { margin: 8px 0 0; font-size: 14px; }
+.noi-dung-gui summary { color: var(--xanh); cursor: pointer; }
+.nut-gui { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.nut-gui form { margin: 0; }
+.nut-gui .nut, .nut-gui button { min-height: 40px; padding: 6px 14px; }

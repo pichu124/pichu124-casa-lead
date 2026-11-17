@@ -196,10 +196,31 @@ def hom_nay(request: Request):
     conn = _conn()
     try:
         nguoi = _nguoi(request, conn)
-        ds = [lt for lt in logic.tinh(conn, logic.lead_cua(conn, nguoi, sale_id=nguoi["id"]))
-              if lt.khan in ("Quá hạn", "Hôm nay")]
+        tat = logic.tinh(conn, logic.lead_cua(conn, nguoi, sale_id=nguoi["id"]))
+        ds = [lt for lt in tat if lt.khan in ("Quá hạn", "Hôm nay")]
         ds.sort(key=lambda lt: (lt.han, lt.row["id"]))
-        return _ve(request, "hom_nay.html", nguoi, ds=ds, hom_nay=dongho.hom_nay())
+        noi_dung = {q.GUI_UU_DAI: db.lay_he_thong(conn, "noi_dung_uu_dai"),
+                    q.GUI_THONG_TIN: db.lay_he_thong(conn, "noi_dung_thong_tin")}
+        return _ve(request, "hom_nay.html", nguoi, ds=ds, hom_nay=dongho.hom_nay(), gui=logic.viec_gui(conn, tat),
+                   noi_dung=noi_dung, ten_viec_gui=logic.TEN_VIEC_GUI, kieu_cua={v: k for k, v in logic.KIEU_GUI.items()},
+                   zalo=lambda sdt: "https://zalo.me/" + logic.chu_so(sdt))
+    finally:
+        conn.close()
+
+
+@app.post("/lead/{lead_id}/da-gui")
+async def da_gui(request: Request, lead_id: int):
+    """Sale đã gửi ưu đãi / thông tin cho phụ huynh (qua Zalo): ghi lại, việc đó hết nhắc tới lần sau."""
+    form = await _bieu_mau(request)
+    conn = _conn()
+    try:
+        nguoi = _nguoi(request, conn)
+        loai = logic.KIEU_GUI.get(_chu_nhan(form, "kieu"))
+        if logic.mot_lead(conn, nguoi, lead_id) is None or loai is None:
+            raise KhongThay()
+        logic.ghi_da_gui(conn, nguoi, lead_id, loai, dongho.ghi_gio(dongho.bay_gio()))
+        conn.commit()
+        return _ve_lai("/hom-nay")
     finally:
         conn.close()
 

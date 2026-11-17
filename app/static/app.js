@@ -22,3 +22,16 @@
   document.addEventListener('change', capNhat);
   document.addEventListener('DOMContentLoaded', capNhat);
 })();
+
+// Nút "Chép nội dung" (data-chep): chép đoạn mẫu của chủ để dán vào Zalo.
+document.addEventListener('click', function (e) {
+  var nut = e.target.closest('[data-chep]');
+  if (!nut) return;
+  var xong = function () { var cu = nut.textContent; nut.textContent = 'Đã chép ✓'; setTimeout(function () { nut.textContent = cu; }, 2000); };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(nut.dataset.chep).then(xong);
+  } else {
+    var t = document.createElement('textarea'); t.value = nut.dataset.chep; document.body.appendChild(t); t.select();
+    try { document.execCommand('copy'); xong(); } finally { document.body.removeChild(t); }
+  }
+});

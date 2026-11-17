@@ -156,6 +156,8 @@ def khoi_tao(conn: sqlite3.Connection) -> None:
     for khoa, gia_tri in q.CAU_HINH_MAC_DINH.items():
         conn.execute("INSERT OR IGNORE INTO cau_hinh (khoa, gia_tri, y_nghia) VALUES (?, ?, ?)",
                      (khoa, gia_tri, q.Y_NGHIA_CAU_HINH.get(khoa, "")))
+        # Ý nghĩa là chữ của app (không phải số chủ đã sửa): cập nhật theo quy tắc hiện tại
+        conn.execute("UPDATE cau_hinh SET y_nghia = ? WHERE khoa = ?", (q.Y_NGHIA_CAU_HINH.get(khoa, ""), khoa))
     if conn.execute("SELECT COUNT(*) FROM danh_muc").fetchone()[0] == 0:
         for i, (loai, gia_tri) in enumerate(q.DANH_MUC_MAU):
             if loai in LOAI_DANH_MUC:

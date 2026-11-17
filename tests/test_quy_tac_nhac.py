@@ -216,42 +216,40 @@ class ChuTuGui(unittest.TestCase):
     def ud(self, *ngay):
         return [q.LanGui(datetime(*n, 9), q.GUI_UU_DAI) for n in ngay]
 
-    def test_hoc_phi_lan_dau_sau_2_thang(self):
-        lc = datetime(2026, 9, 1, 9)
-        self.assertFalse(q.nen_gui_uu_dai(q.GD_DAI_HAN, True, True, lc, [], D(2026, 10, 30)))
-        self.assertTrue(q.nen_gui_uu_dai(q.GD_DAI_HAN, True, True, lc, [], D(2026, 10, 31)))
+    # Hạn gửi (sale gửi, nhắc ở tab Hôm nay tới khi bấm Đã gửi): dời qua thứ 7, Chủ nhật như hạn liên hệ.
+    def han(self, gd=q.GD_DAI_HAN, sdt=True, hp=True, nhan=D(2026, 8, 1), lc=D(2026, 9, 1), g=(), hom_nay=D(2026, 11, 4),
+            coc=False):
+        return q.han_gui_uu_dai(gd, sdt, hp, nhan, lc, list(g), hom_nay, da_dat_coc=coc)
+
+    def test_hoc_phi_lan_dau_sau_2_thang_ke_tu_lan_lien_he_cuoi(self):
+        self.assertEqual(self.han(), D(2026, 11, 2))  # 31/10 là thứ 7: dời sang thứ 2
 
     def test_hoc_phi_lan_2_va_toi_da(self):
-        lc = datetime(2026, 9, 1, 9)
         g1 = self.ud((2026, 11, 1))
-        self.assertFalse(q.nen_gui_uu_dai(q.GD_DAI_HAN, True, True, lc, g1, D(2026, 12, 30)))
-        self.assertTrue(q.nen_gui_uu_dai(q.GD_DAI_HAN, True, True, lc, g1, D(2026, 12, 31)))
-        self.assertFalse(q.nen_gui_uu_dai(q.GD_DAI_HAN, True, True, lc, g1, D(2027, 5, 1)))  # quá 180 ngày
-        g2 = self.ud((2026, 11, 1), (2027, 1, 5))
-        self.assertFalse(q.nen_gui_uu_dai(q.GD_DAI_HAN, True, True, lc, g2, D(2027, 6, 1)))  # đủ 2 lần
+        self.assertEqual(self.han(g=g1, hom_nay=D(2026, 12, 1)), D(2026, 12, 31))
+        self.assertIsNone(self.han(g=g1, hom_nay=D(2027, 5, 1)))  # quá 180 ngày sau lần 1: thôi
+        self.assertIsNone(self.han(g=self.ud((2026, 11, 1), (2027, 1, 5)), hom_nay=D(2027, 6, 1)))  # đủ 2 lần
 
-    def test_lead_khac_thi_thoang(self):
-        self.assertTrue(q.nen_gui_uu_dai(q.GD_DANG, True, False, datetime(2026, 11, 1, 9), [], D(2026, 11, 4)))
-        g = self.ud((2026, 9, 6))
-        self.assertFalse(q.nen_gui_uu_dai(q.GD_DANG, True, False, datetime(2026, 11, 1, 9), g, D(2026, 11, 4)))
-        self.assertTrue(q.nen_gui_uu_dai(q.GD_DANG, True, False, datetime(2026, 11, 1, 9), g, D(2026, 11, 5)))
+    def test_lead_thuong_lan_dau_60_ngay_sau_nhan_lead_roi_60_ngay_mot_lan(self):
+        self.assertEqual(self.han(gd=q.GD_DANG, hp=False, nhan=D(2026, 11, 1)), D(2026, 12, 31))
+        self.assertEqual(self.han(gd=q.GD_DANG, hp=False, nhan=D(2026, 8, 1), g=self.ud((2026, 9, 6))), D(2026, 11, 5))
 
     def test_khong_gui(self):
         for gd, sdt, coc in ((q.GD_CHOT, True, False), (q.GD_DUNG, True, False), (q.GD_DANG, False, False), (q.GD_DANG, True, True)):
             with self.subTest(gd=gd, sdt=sdt, coc=coc):
-                self.assertFalse(q.nen_gui_uu_dai(gd, sdt, False, datetime(2026, 9, 1, 9), [], D(2026, 11, 4), da_dat_coc=coc))
+                self.assertIsNone(self.han(gd=gd, sdt=sdt, hp=False, coc=coc))
 
     def test_bang_khoan_hoc_phi(self):
         self.assertTrue(q.bang_khoan_hoc_phi(None, "Học phí vượt khả năng", []))
         self.assertTrue(q.bang_khoan_hoc_phi(None, "", ["Băn khoăn Học phí, muốn hỏi chồng"]))
         self.assertFalse(q.bang_khoan_hoc_phi(None, "", ["Hỏi thực đơn"]))
 
-    def test_thong_tin_dai_han_moi_thang(self):
+    def test_thong_tin_dai_han_30_ngay_sau_lan_lien_he_cuoi_roi_30_ngay_mot_lan(self):
         g = [q.LanGui(datetime(2026, 10, 5, 9), q.GUI_THONG_TIN)]
-        self.assertTrue(q.nen_gui_thong_tin(q.GD_DAI_HAN, True, [], D(2026, 11, 4)))
-        self.assertFalse(q.nen_gui_thong_tin(q.GD_DAI_HAN, True, g, D(2026, 11, 3)))
-        self.assertTrue(q.nen_gui_thong_tin(q.GD_DAI_HAN, True, g, D(2026, 11, 4)))
-        self.assertFalse(q.nen_gui_thong_tin(q.GD_DANG, True, [], D(2026, 11, 4)))
+        self.assertEqual(q.han_gui_thong_tin(q.GD_DAI_HAN, True, D(2026, 10, 5), []), D(2026, 11, 4))
+        self.assertEqual(q.han_gui_thong_tin(q.GD_DAI_HAN, True, D(2026, 9, 1), g), D(2026, 11, 4))
+        self.assertIsNone(q.han_gui_thong_tin(q.GD_DANG, True, D(2026, 10, 5), []))
+        self.assertIsNone(q.han_gui_thong_tin(q.GD_DAI_HAN, False, D(2026, 10, 5), []))
 
 
 class GiaiDoan(unittest.TestCase):

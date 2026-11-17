@@ -28,15 +28,28 @@ def _dong(lt: logic.LeadTinh) -> str:
     return f"- {lt.row['ten_ph']}{be}, {khan}: {lt.viec or 'Liên hệ'}"
 
 
+def _dong_gui(v: logic.ViecGui) -> str:
+    be = f" (bé {v.lt.row['ten_be']})" if v.lt.row["ten_be"] else ""
+    khan = f"quá hạn {v.so_ngay_qua_han} ngày" if v.so_ngay_qua_han else "hôm nay"
+    return f"- {v.lt.row['ten_ph']}{be}, {khan}: {logic.TEN_VIEC_GUI[v.loai]}"
+
+
+def _viec_cua(conn: sqlite3.Connection, nguoi: sqlite3.Row, hom_nay: date) -> tuple[list, list]:
+    """(lead cần liên hệ hôm nay hoặc quá hạn, việc gửi ưu đãi / thông tin đã đến hạn) của một sale."""
+    tat = logic.tinh(conn, logic.lead_cua(conn, nguoi), hom_nay)
+    ds = sorted((lt for lt in tat if lt.khan in ("Quá hạn", "Hôm nay")), key=lambda lt: (lt.han, lt.row["id"]))
+    return ds, logic.viec_gui(conn, tat, hom_nay)
+
+
 def tin_cho_sale(conn: sqlite3.Connection, sale: sqlite3.Row, hom_nay: date) -> str | None:
-    ds = [lt for lt in logic.tinh(conn, logic.lead_cua(conn, sale), hom_nay) if lt.khan in ("Quá hạn", "Hôm nay")]
-    if not ds:
+    ds, gui = _viec_cua(conn, sale, hom_nay)
+    if not ds and not gui:
         return None
-    ds.sort(key=lambda lt: (lt.han, lt.row["id"]))
     qua_han = sum(lt.khan == "Quá hạn" for lt in ds)
     dong = [f"Chào {sale['ten']},", "",
-            f"Hôm nay bạn có {len(ds) - qua_han} phụ huynh cần liên hệ và {qua_han} phụ huynh đã quá hạn.", ""]
-    dong += [_dong(lt) for lt in ds]
+            f"Hôm nay bạn có {len(ds) - qua_han} phụ huynh cần liên hệ và {qua_han} phụ huynh đã quá hạn"
+            + (f", cộng {len(gui)} việc gửi ưu đãi / thông tin." if gui else "."), ""]
+    dong += [_dong(lt) for lt in ds] + [_dong_gui(v) for v in gui]
     url = os.environ.get("CASA_LEAD_URL", "")
     dong += ["", "Gọi xong nhớ ghi nhận trong app" + (f": {url}" if url else ".")]
     return "\n".join(dong)
@@ -65,14 +78,14 @@ def tin_cho_nhom(conn: sqlite3.Connection, hom_nay: date) -> str:
         if nguoi["vai_tro"] == "chu":
             chu = chu or nguoi
             continue
-        ds = [lt for lt in logic.tinh(conn, logic.lead_cua(conn, nguoi), hom_nay) if lt.khan in ("Quá hạn", "Hôm nay")]
-        if not ds:
+        ds, gui = _viec_cua(conn, nguoi, hom_nay)
+        if not ds and not gui:
             continue
-        ds.sort(key=lambda lt: (lt.han, lt.row["id"]))
         qua_han = sum(lt.khan == "Quá hạn" for lt in ds)
         co_so = f" ({nguoi['co_so']})" if nguoi["co_so"] else ""
-        dong += ["", f"— {nguoi['ten']}{co_so}: {len(ds) - qua_han} hôm nay, {qua_han} quá hạn"]
-        dong += [_dong(lt) for lt in ds]
+        dong += ["", f"— {nguoi['ten']}{co_so}: {len(ds) - qua_han} hôm nay, {qua_han} quá hạn"
+                 + (f", {len(gui)} việc gửi" if gui else "")]
+        dong += [_dong(lt) for lt in ds] + [_dong_gui(v) for v in gui]
     if len(dong) == 1:
         dong += ["", "Hôm nay không sale nào có phụ huynh đến hạn liên hệ."]
     if chu is not None:

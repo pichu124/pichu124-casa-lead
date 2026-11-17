@@ -477,36 +477,41 @@ def bang_khoan_hoc_phi(cuoi: LanChamSoc | None, ly_do_chat_luong: str, phan_hoi:
     return any("học phí" in (p or "").lower() for p in phan_hoi)
 
 
-def nen_gui_uu_dai(gd: str, co_sdt: bool, hoc_phi: bool, lan_cuoi: datetime, gui: list[LanGui],
-                   hom_nay: date, ch: dict[str, int] = CAU_HINH_MAC_DINH, da_dat_coc: bool = False) -> bool:
-    """Lead có vào danh sách "Gửi ưu đãi" của chủ hôm nay không.
+def han_gui_uu_dai(gd: str, co_sdt: bool, hoc_phi: bool, ngay_nhan: date, lan_cuoi: date, gui: list[LanGui],
+                   hom_nay: date, ch: dict[str, int] = CAU_HINH_MAC_DINH, da_dat_coc: bool = False,
+                   nghi: set[date] = frozenset()) -> date | None:
+    """Ngày sale cần gửi ưu đãi học phí cho lead (việc ở tab Hôm nay, còn đó tới khi sale bấm Đã gửi). None: không gửi.
 
-    `lan_cuoi`: thời gian lần chăm sóc mới nhất (hoặc ngày nhận nếu chưa có). `gui`: các lần chủ đã gửi.
-    Nhóm băn khoăn học phí: lần đầu sau "Ưu đãi lần đầu" ngày kể từ lần cuối; tối đa "Ưu đãi tối đa" lần;
-    lần 2 cách lần 1 ít nhất "Ưu đãi cách nhau" ngày và trong vòng "Ưu đãi lần 2 trong vòng" ngày.
-    Các lead khác: cách lần gửi trước ít nhất "Ưu đãi cách nhau" ngày.
-    Không gửi cho lead đã chốt, dừng, đã đặt cọc (đang chờ thư mời), hoặc không có SĐT.
+    `ngay_nhan`: ngày nhận lead. `lan_cuoi`: ngày liên hệ mới nhất (chưa liên hệ thì ngày nhận). `gui`: các lần đã gửi.
+    Nhóm băn khoăn học phí: lần đầu "Ưu đãi lần đầu" ngày sau lần liên hệ cuối; tối đa "Ưu đãi tối đa" lần; lần sau
+    "Ưu đãi cách nhau" ngày sau lần trước, quá "Ưu đãi lần 2 trong vòng" ngày sau lần trước mà chưa gửi thì thôi.
+    Lead khác: lần đầu "Ưu đãi lần đầu" ngày sau ngày nhận lead, rồi cứ "Ưu đãi cách nhau" ngày một lần.
+    Không gửi cho lead đã chốt, dừng, đã đặt cọc (đang chờ thư mời), hoặc không có SĐT. Hạn dời qua ngày nghỉ.
     """
     if gd not in (GD_DANG, GD_DAI_HAN) or not co_sdt or da_dat_coc:
-        return False
+        return None
     ud = sorted(g.thoi_gian.date() for g in gui if g.loai == GUI_UU_DAI)
-    cach = timedelta(days=ch["Ưu đãi cách nhau"])
-    if not hoc_phi:
-        return not ud or hom_nay - ud[-1] >= cach
-    if not ud:
-        return hom_nay - lan_cuoi.date() >= timedelta(days=ch["Ưu đãi lần đầu"])
-    if len(ud) >= ch["Ưu đãi tối đa"]:
-        return False
-    return cach <= hom_nay - ud[-1] <= timedelta(days=ch["Ưu đãi lần 2 trong vòng"])
+    lan_dau, cach = timedelta(days=ch["Ưu đãi lần đầu"]), timedelta(days=ch["Ưu đãi cách nhau"])
+    if hoc_phi:
+        if not ud:
+            han = lan_cuoi + lan_dau
+        elif len(ud) >= ch["Ưu đãi tối đa"] or hom_nay - ud[-1] > timedelta(days=ch["Ưu đãi lần 2 trong vòng"]):
+            return None
+        else:
+            han = ud[-1] + cach
+    else:
+        han = ud[-1] + cach if ud else ngay_nhan + lan_dau
+    return ngay_lam_viec_toi(han, nghi)
 
 
-def nen_gui_thong_tin(gd: str, co_sdt: bool, gui: list[LanGui], hom_nay: date,
-                      ch: dict[str, int] = CAU_HINH_MAC_DINH) -> bool:
-    """Lead dài hạn có vào danh sách "Gửi thông tin" (sự kiện, hội thảo, video) của chủ hôm nay không."""
+def han_gui_thong_tin(gd: str, co_sdt: bool, lan_cuoi: date, gui: list[LanGui],
+                      ch: dict[str, int] = CAU_HINH_MAC_DINH, nghi: set[date] = frozenset()) -> date | None:
+    """Ngày sale cần gửi thông tin hoạt động (sự kiện, hội thảo, video) cho lead dài hạn: "Thông tin dài hạn" ngày sau
+    lần gửi trước, chưa gửi lần nào thì sau lần liên hệ cuối. None: không gửi (không dài hạn, không có SĐT)."""
     if gd != GD_DAI_HAN or not co_sdt:
-        return False
+        return None
     tt = [g.thoi_gian.date() for g in gui if g.loai == GUI_THONG_TIN]
-    return not tt or hom_nay - max(tt) >= timedelta(days=ch["Thông tin dài hạn"])
+    return ngay_lam_viec_toi((max(tt) if tt else lan_cuoi) + timedelta(days=ch["Thông tin dài hạn"]), nghi)
 
 
 # ---------------------------------------------------------------- thống kê theo tháng
@@ -613,11 +618,11 @@ Y_NGHIA_CAU_HINH = {
     "Đầu năm học ngày": "Ngày bắt đầu năm học",
     "Từ chối chưa nhu cầu": "Từ chối vì chưa có nhu cầu: nhắc lại sau chừng này ngày",
     "Từ chối khác": "Từ chối vì lý do khác: nhắc lại sau chừng này ngày",
-    "Ưu đãi lần đầu": "Nhóm băn khoăn học phí: gửi ưu đãi lần đầu sau chừng này ngày kể từ lần liên hệ cuối",
+    "Ưu đãi lần đầu": "Sale gửi ưu đãi lần đầu sau chừng này ngày: nhóm băn khoăn học phí tính từ lần liên hệ cuối, lead khác từ ngày nhận lead",
     "Ưu đãi cách nhau": "Hai lần gửi ưu đãi cách nhau ít nhất chừng này ngày",
     "Ưu đãi tối đa": "Nhóm băn khoăn học phí: gửi ưu đãi tối đa chừng này lần",
     "Ưu đãi lần 2 trong vòng": "Nhóm băn khoăn học phí: quá chừng này ngày sau lần 1 mà chưa gửi lần 2 thì thôi",
-    "Thông tin dài hạn": "Lead dài hạn: gửi thông tin hoạt động cách nhau chừng này ngày",
+    "Thông tin dài hạn": "Lead dài hạn: sale gửi thông tin hoạt động chừng này ngày sau lần liên hệ cuối, rồi cách nhau chừng này ngày",
     "Tuổi nhận học (tháng)": "Bé nhỏ hơn tuổi này (tháng) thì chờ, nhắc khi bé sắp đủ tuổi",
     "Nhắc trước tuổi nhận học": "Nhắc trước ngày bé đủ tuổi nhận học chừng này ngày",
     "Tuổi tối đa (tháng)": "Bé đủ tuổi này (tháng) thì nhắc sale hỏi phụ huynh về em nhỏ",

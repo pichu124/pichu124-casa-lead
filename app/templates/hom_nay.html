@@ -2,6 +2,27 @@
 {% block title %}Hôm nay · Casa chăm sóc lead{% endblock %}
 {% block noi_dung %}
 <h1>Hôm nay <small class="so">{{ ngay_vn(hom_nay) }}</small></h1>
+{% if gui %}
+<section class="viec-gui">
+  <h2>Cần gửi ưu đãi / thông tin <small>{{ gui|length }}</small></h2>
+  <p class="nho">Mở Zalo của phụ huynh, gửi nội dung, rồi bấm <b>Đã gửi</b>. Chưa bấm thì app còn nhắc.</p>
+  {% for v in gui %}{% set r = v.lt.row %}{% set nd = noi_dung[v.loai] %}
+  <article class="the the-gui {{ 'khan-qua' if v.so_ngay_qua_han else 'khan-nay' }}">
+    <div class="the-dong1"><a href="/lead/{{ r.id }}"><strong>{{ r.ten_ph }}</strong></a>{% if r.ten_be %} <span class="be">bé {{ r.ten_be }}</span>{% endif %}
+      {% if v.so_ngay_qua_han %}<span class="nhan nhan-qua">quá hạn {{ v.so_ngay_qua_han }} ngày</span>{% else %}<span class="nhan nhan-nay">hôm nay</span>{% endif %}</div>
+    <div class="viec">{{ ten_viec_gui[v.loai] }}{% if v.hoc_phi %} <span class="nho">· phụ huynh băn khoăn học phí</span>{% endif %}</div>
+    <div class="nho">{% if v.so_lan %}Đã gửi {{ v.so_lan }} lần, lần trước {{ ngay_vn(v.lan_truoc) }}{% else %}Chưa gửi lần nào{% endif %}</div>
+    {% if nd %}<details class="noi-dung-gui"><summary>Nội dung mẫu</summary><p class="ghi-chu">{{ nd }}</p></details>{% endif %}
+    <div class="nut-gui">
+      {% if nd %}<button type="button" class="nut" data-chep="{{ nd }}">Chép nội dung</button>{% endif %}
+      <a class="nut" href="{{ zalo(r.sdt) }}" target="_blank" rel="noopener">Mở Zalo</a>
+      <form method="post" action="/lead/{{ r.id }}/da-gui"><input type="hidden" name="csrf" value="{{ csrf }}">
+        <input type="hidden" name="kieu" value="{{ kieu_cua[v.loai] }}"><button class="chinh">Đã gửi</button></form>
+    </div>
+  </article>
+  {% endfor %}
+</section>
+{% endif %}
 {% if not ds %}
 <p class="trong">Không còn phụ huynh nào cần liên hệ hôm nay.</p>
 {% else %}

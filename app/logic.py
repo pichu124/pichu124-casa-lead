@@ -189,3 +189,65 @@ def lead_trung(conn: sqlite3.Connection, sdt: str, tru_id: int | None = None) ->
 
 def co_lead_em(conn: sqlite3.Connection, lead: sqlite3.Row) -> bool:
     return any(r["nguon"] == q.NGUON_EM_NHO for r in lead_trung(conn, lead["sdt"], tru_id=lead["id"]))
+
+
+@dataclass
+class ViecGui:
+    """Một việc gửi ưu đãi / thông tin của sale cho một lead (tab Hôm nay, danh sách của chủ, tin nhắc sáng)."""
+    lt: LeadTinh
+    loai: str  # q.GUI_UU_DAI hoặc q.GUI_THONG_TIN
+    han: date
+    so_ngay_qua_han: int
+    hoc_phi: bool
+    so_lan: int  # số lần đã gửi loại này
+    lan_truoc: date | None
+
+
+TEN_VIEC_GUI = {q.GUI_UU_DAI: "Gửi ưu đãi học phí", q.GUI_THONG_TIN: "Gửi thông tin hoạt động"}
+KIEU_GUI = {"uu-dai": q.GUI_UU_DAI, "thong-tin": q.GUI_THONG_TIN}
+
+
+def viec_gui(conn: sqlite3.Connection, ds: list[LeadTinh], hom_nay: date | None = None) -> list[ViecGui]:
+    """Việc gửi đã đến hạn (hạn <= hôm nay) của các lead `ds`: còn đó tới khi sale bấm Đã gửi. Quá hạn lâu nhất lên đầu."""
+    hom_nay = hom_nay or _hom_nay()
+    if not ds:
+        return []
+    ch, nghi = cau_hinh(conn), ngay_nghi(conn)
+    ids = [lt.row["id"] for lt in ds]
+    gui: dict[int, list[q.LanGui]] = {i: [] for i in ids}
+    cho = ",".join("?" * len(ids))
+    for g in conn.execute(f"SELECT lead_id, thoi_gian, loai FROM gui_thong_tin WHERE lead_id IN ({cho})", ids):
+        gui[g["lead_id"]].append(q.LanGui(doc_gio(g["thoi_gian"]), g["loai"]))
+    kq = []
+    for lt in ds:
+        g = gui[lt.row["id"]]
+        co_sdt = len(chu_so(lt.row["sdt"])) >= 9
+        nhan = doc_gio(lt.row["ngay_nhan"]).date()
+        lan_cuoi = doc_gio(lt.lan_cuoi["thoi_gian"]).date() if lt.lan_cuoi else nhan
+        cuoi = lan_cham_soc(lt.lan_cuoi) if lt.lan_cuoi else None
+        hoc_phi = q.bang_khoan_hoc_phi(cuoi, lt.row["ly_do_chat_luong"], [c["phan_hoi"] for c in lt.lich_su])
+        da_coc = bool(lt.lan_cuoi) and lt.lan_cuoi["tinh_trang"] == q.DAT_COC
+        for loai, han in (
+            (q.GUI_UU_DAI, q.han_gui_uu_dai(lt.giai_doan, co_sdt, hoc_phi, nhan, lan_cuoi, g, hom_nay, ch, da_coc, nghi)),
+            (q.GUI_THONG_TIN, q.han_gui_thong_tin(lt.giai_doan, co_sdt, lan_cuoi, g, ch, nghi)),
+        ):
+            if han is None or han > hom_nay:
+                continue
+            cung = sorted(x.thoi_gian.date() for x in g if x.loai == loai)
+            kq.append(ViecGui(lt, loai, han, (hom_nay - han).days, hoc_phi and loai == q.GUI_UU_DAI, len(cung),
+                              cung[-1] if cung else None))
+    kq.sort(key=lambda v: (v.han, v.lt.row["id"], v.loai))
+    return kq
+
+
+def ghi_da_gui(conn: sqlite3.Connection, nguoi: sqlite3.Row, lead_id: int, loai: str, thoi_gian: str) -> bool:
+    """Sale (hoặc chủ) ghi đã gửi `loai` cho lead. Không ghi thêm lần cùng loại trong cùng ngày (bấm hai lần).
+    False khi không được xem lead này hoặc đã ghi hôm nay."""
+    if loai not in TEN_VIEC_GUI or mot_lead(conn, nguoi, lead_id) is None:
+        return False
+    if conn.execute("SELECT 1 FROM gui_thong_tin WHERE lead_id = ? AND loai = ? AND substr(thoi_gian, 1, 10) = ?",
+                    (lead_id, loai, thoi_gian[:10])).fetchone():
+        return False
+    conn.execute("INSERT INTO gui_thong_tin (lead_id, thoi_gian, loai, nguoi_gui) VALUES (?, ?, ?, ?)",
+                 (lead_id, thoi_gian, loai, nguoi["id"]))
+    return True
