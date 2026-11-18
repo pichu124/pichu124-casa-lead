@@ -20,14 +20,6 @@ log = logging.getLogger("casa_lead.dong_bo_messenger")
 DA_BAO = "messenger_da_bao"
 
 
-def _nguoi_nhan(conn: sqlite3.Connection) -> list[str]:
-    nhom = db.lay_he_thong(conn, "telegram_nhom")
-    if nhom:
-        return [nhom]
-    return [r[0] for r in conn.execute("SELECT telegram_chat_id FROM nguoi_dung WHERE vai_tro = 'chu' "
-                                       "AND dang_lam = 1 AND telegram_chat_id != ''")]
-
-
 def _tin(moi: list[dict]) -> str:
     dong = [f"📩 Messenger mới: {len(moi)} phụ huynh để SĐT cho bot, chờ giao sale."]
     for h in moi:
@@ -54,12 +46,12 @@ def chay(conn: sqlite3.Connection) -> list[tuple[str, str]]:
         return []
     tin = _tin(moi)
     gui = []
-    for chat in _nguoi_nhan(conn):
+    for chat in telegram.nguoi_nhan_quan_ly(conn):
         if telegram.gui_tin(chat, tin):
             gui.append((chat, tin))
         else:
             log.warning("Không báo được Messenger mới vào Telegram (lỗi mạng hoặc bot bị gỡ)")
-    if gui or not _nguoi_nhan(conn):  # gửi lỗi hết thì để lần sau báo lại
+    if gui or not telegram.nguoi_nhan_quan_ly(conn):  # gửi lỗi hết thì để lần sau báo lại
         db.dat_he_thong(conn, DA_BAO, json.dumps(sorted(da_bao | {h["customer_id"] for h in moi})))
         conn.commit()
     return gui

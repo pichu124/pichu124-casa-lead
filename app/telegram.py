@@ -62,6 +62,15 @@ def chia_tin(s: str, toi_da: int = DAI_TIN) -> list[str]:
     return phan
 
 
+def nguoi_nhan_quan_ly(conn: sqlite3.Connection) -> list[str]:
+    """Nơi nhận tin cho quản lý: nhóm Telegram đã nối, chưa nối thì từng chủ đang làm đã nối Telegram."""
+    nhom = lay_he_thong(conn, "telegram_nhom")
+    if nhom:
+        return [nhom]
+    return [r[0] for r in conn.execute("SELECT telegram_chat_id FROM nguoi_dung WHERE vai_tro = 'chu' "
+                                       "AND dang_lam = 1 AND telegram_chat_id != ''")]
+
+
 def gui_tin(chat_id: str, noi_dung: str) -> bool:
     """Gửi một tin. Trả về False (và ghi log, không kèm nội dung) khi chưa cấu hình hoặc lỗi."""
     if not _token() or not chat_id:
