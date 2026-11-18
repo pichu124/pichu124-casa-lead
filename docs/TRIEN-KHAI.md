@@ -238,6 +238,19 @@ Mở https://casa-lead.duckdns.org trên điện thoại, đăng nhập tài kho
 
 ## Cập nhật mã về sau
 
+**Lệnh tắt (khuyên dùng).** Làm một lần, chép script ra ngoài kho mã (git pull mà sửa đúng tệp đang chạy thì bash đọc
+hỏng):
+
+```bash
+cp /opt/casa-lead/scripts/cap-nhat-vps.sh ~/cap-nhat-lead.sh && chmod +x ~/cap-nhat-lead.sh
+```
+
+Từ đó mỗi lần chỉ cần `~/cap-nhat-lead.sh`, đứng ở thư mục nào cũng được (script tự vào `/opt/casa-lead`). Script ghi
+lại bản đang chạy, sao lưu, `git pull`, cài thư viện nếu `requirements` đổi, chạy `check.sh` (đỏ thì dừng, không khởi
+động lại), khởi động lại và kiểm `/healthz`. Script báo khi chính nó có bản mới để chép lại.
+
+Làm tay từng bước (giống hệt lệnh tắt):
+
 ```bash
 cd /opt/casa-lead
 CASA_LEAD_DATA=/var/lib/casa-lead .venv/bin/python scripts/sao_luu.py
