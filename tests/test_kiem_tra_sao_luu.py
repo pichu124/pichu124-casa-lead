@@ -98,3 +98,47 @@ def test_cau_hinh_mac_dinh_tren_vps(monkeypatch):
     ds = kt.cac_noi_kiem()
     assert [(t, r) for t, _, r in ds] == [("casa-lead", "mahoa:casa-lead"), ("casa-mamnon", "mahoa:casa-mamnon")]
     assert str(ds[1][1]) == "/var/lib/casa-mamnon/backups"
+
+
+THU_2 = date(2026, 11, 9)  # thứ 2: tổng kết 7 đêm 03/11 → 09/11
+
+
+def _du_tuan(lead, mamnon, drive, bo_drive=()):
+    for d in range(3, 10):
+        ngay = f"202611{d:02d}"
+        (lead / f"casa-lead-{ngay}-021501.db").write_bytes(b"x")
+        (mamnon / f"school-{ngay}-0200.db.gz").write_bytes(b"x")
+        if ngay not in bo_drive:
+            drive["mahoa:casa-lead"].append(f"casa-lead-{ngay}-021501.db")
+        drive["mahoa:casa-mamnon"].append(f"school-{ngay}-0200.db.gz")
+
+
+def test_thu_2_gui_tong_ket_tuan_khi_du(may):
+    lead, mamnon, drive, da_gui, conn = may
+    _du_tuan(lead, mamnon, drive)
+    assert kt.chay(conn, THU_2) == []
+    [(chat, tin)] = da_gui
+    assert chat == "-1001" and tin.startswith("✅") and "03/11–09/11" in tin
+    assert "casa-lead: 7/7 đêm" in tin and "casa-mamnon: 7/7 đêm" in tin
+
+
+def test_thu_2_tong_ket_neu_ro_dem_thieu(may):
+    lead, mamnon, drive, da_gui, conn = may
+    _du_tuan(lead, mamnon, drive, bo_drive=("20261105",))
+    kt.chay(conn, THU_2)
+    [(_, tin)] = da_gui
+    assert "casa-lead: 6/7 đêm" in tin and "thiếu 05/11" in tin
+
+
+def test_ngay_thuong_du_thi_van_im_lang(may):
+    lead, mamnon, drive, da_gui, conn = may
+    _du_tuan(lead, mamnon, drive)
+    assert kt.chay(conn, date(2026, 11, 6)) == [] and da_gui == []
+
+
+def test_thu_2_co_loi_thi_mot_tin_gom_canh_bao_va_tong_ket(may):
+    lead, mamnon, drive, da_gui, conn = may
+    _du_tuan(lead, mamnon, drive, bo_drive=("20261109",))
+    kt.chay(conn, THU_2)
+    [(_, tin)] = da_gui
+    assert tin.startswith("⚠") and "casa-lead: chưa lên Drive" in tin and "casa-lead: 6/7 đêm" in tin

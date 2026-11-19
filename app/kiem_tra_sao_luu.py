@@ -5,7 +5,8 @@
 
 Mỗi nơi kiểm (casa-lead, CASA Mầm non) phải có tệp mang ngày hôm nay (YYYYMMDD trong tên) ở thư mục sao lưu trên VPS
 và trên Drive (`rclone lsf <remote>`). Kiểm kết quả chứ không sửa lệnh sao lưu: bắt được cả cron không chạy, script
-lỗi, rclone không đẩy lên được. Đủ thì im lặng. Danh sách nơi kiểm đổi bằng biến SAO_LUU_KIEM_TRA
+lỗi, rclone không đẩy lên được. Đủ thì im lặng, trừ sáng thứ 2: gửi tổng kết 7 đêm để biết việc kiểm vẫn chạy.
+Danh sách nơi kiểm đổi bằng biến SAO_LUU_KIEM_TRA
 ("tên=thư mục=remote;…"). Tin không chứa dữ liệu phụ huynh.
 """
 
@@ -17,7 +18,7 @@ import os
 import sqlite3
 import subprocess
 import sys
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 from . import db, dongho, telegram
@@ -39,8 +40,8 @@ def cac_noi_kiem() -> list[tuple[str, Path, str]]:
             ("casa-mamnon", Path(MAMNON_MAC_DINH), "mahoa:casa-mamnon")]
 
 
-def _tren_drive(remote: str, ngay: str) -> bool | None:
-    """Có tệp mang `ngay` trên remote không; None khi không đọc được Drive (rclone lỗi, không có rclone)."""
+def _ten_tren_drive(remote: str) -> list[str] | None:
+    """Tên các tệp trên remote; None khi không đọc được Drive (rclone lỗi, không có rclone)."""
     try:
         r = subprocess.run(["rclone", "lsf", remote, "--files-only"], capture_output=True, text=True, timeout=180)
     except (OSError, subprocess.TimeoutExpired) as e:
@@ -49,37 +50,66 @@ def _tren_drive(remote: str, ngay: str) -> bool | None:
     if r.returncode != 0:
         log.warning("rclone lsf %s lỗi (mã %s)", remote, r.returncode)
         return None
-    return any(ngay in dong for dong in r.stdout.splitlines())
+    return r.stdout.splitlines()
 
 
-def kiem(hom_nay: date) -> list[str]:
-    """Các vấn đề của bản sao lưu đêm qua ([] là đủ)."""
-    ngay = hom_nay.strftime("%Y%m%d")
-    loi = []
+def _ten_tren_vps(thu_muc: Path) -> list[str]:
+    return [t.name for t in thu_muc.iterdir()] if thu_muc.is_dir() else []
+
+
+def _co(ten: list[str], ngay: date) -> bool:
+    the = ngay.strftime("%Y%m%d")
+    return any(the in x for x in ten)
+
+
+def kiem(hom_nay: date, tuan: bool = False) -> tuple[list[str], list[str]]:
+    """(các vấn đề của bản sao lưu đêm qua, các dòng tổng kết 7 đêm khi `tuan`). Vấn đề rỗng là đủ."""
+    loi, tong = [], []
     for ten, thu_muc, remote in cac_noi_kiem():
-        if not thu_muc.is_dir() or not any(ngay in t.name for t in thu_muc.iterdir()):
+        vps, drive = _ten_tren_vps(thu_muc), _ten_tren_drive(remote)
+        if not _co(vps, hom_nay):
             loi.append(f"{ten}: không thấy bản sao lưu đêm qua trên VPS ({thu_muc})")
-        tren = _tren_drive(remote, ngay)
-        if tren is None:
+        if drive is None:
             loi.append(f"{ten}: không đọc được Drive ({remote}): rclone lỗi hoặc mất quyền")
-        elif not tren:
+        elif not _co(drive, hom_nay):
             loi.append(f"{ten}: chưa lên Drive ({remote})")
-    return loi
+        if tuan:
+            dem = [hom_nay - timedelta(days=k) for k in range(6, -1, -1)]
+            thieu = [d for d in dem if not (_co(vps, d) and drive is not None and _co(drive, d))]
+            dong = f"{ten}: {7 - len(thieu)}/7 đêm có trên cả VPS và Drive"
+            if thieu:
+                dong += " (thiếu " + ", ".join(f"{d:%d/%m}" for d in thieu) + ")"
+            tong.append(dong)
+    return loi, tong
 
 
 def chay(conn: sqlite3.Connection, hom_nay: date, thu: bool = False) -> list[str]:
-    loi = kiem(hom_nay)
-    if not loi or thu:
+    """Kiểm bản đêm qua; thiếu thì báo. Thứ 2 gửi thêm tổng kết 7 đêm (kể cả khi đủ), để biết việc kiểm vẫn chạy.
+    Trả các vấn đề của đêm qua."""
+    tuan = hom_nay.weekday() == 0
+    loi, tong = kiem(hom_nay, tuan)
+    if not loi and not tuan:
         return loi
-    tin = "\n".join([f"⚠ Sao lưu đêm qua ({hom_nay:%d/%m/%Y}) có vấn đề:", *[f"- {x}" for x in loi], "",
-                     "Kiểm tra trên VPS (user casa): tail -20 /home/casa/sao-luu-lead.log, "
-                     "tail -20 /home/casa/backup-casa.log, rclone listremotes."])
+    tu = hom_nay - timedelta(days=6)
+    dong_tuan = [f"Tuần {tu:%d/%m}–{hom_nay:%d/%m}:", *[f"- {x}" for x in tong]] if tuan else []
+    if loi:
+        dong = [f"⚠ Sao lưu đêm qua ({hom_nay:%d/%m/%Y}) có vấn đề:", *[f"- {x}" for x in loi], "",
+                "Kiểm tra trên VPS (user casa): tail -20 /home/casa/sao-luu-lead.log, "
+                "tail -20 /home/casa/backup-casa.log, rclone listremotes."]
+        if dong_tuan:
+            dong += ["", *dong_tuan]
+    else:
+        dong = [f"✅ Sao lưu tuần qua ổn (tổng kết thứ 2, việc kiểm tra hằng sáng vẫn chạy).", *dong_tuan]
+    tin = "\n".join(dong)
+    if thu:
+        print(tin)
+        return loi
     nhan = telegram.nguoi_nhan_quan_ly(conn)
     if not nhan:
-        log.warning("Sao lưu có vấn đề nhưng chưa có nơi nhận Telegram (chưa nối nhóm, chủ chưa nối)")
+        log.warning("Có tin sao lưu nhưng chưa có nơi nhận Telegram (chưa nối nhóm, chủ chưa nối)")
     for chat in nhan:
         if not telegram.gui_tin(chat, tin):
-            log.warning("Không gửi được cảnh báo sao lưu vào Telegram")
+            log.warning("Không gửi được tin sao lưu vào Telegram")
     return loi
 
 
