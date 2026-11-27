@@ -2,7 +2,8 @@
 
 Dịch vụ form của website (repo pichu124-casa-website, thư mục form/) ghi mỗi đăng ký một dòng JSON vào
 `/var/lib/casa-website/dang-ky.jsonl` trên cùng VPS. App chỉ ĐỌC tệp đó (không ghi, không xoá, không gọi
-dịch vụ form). Quyền đọc cấp riêng cho user chạy app bằng ACL: docs/TRIEN-KHAI.md mục "Lead website".
+dịch vụ form). Quyền đọc: tệp 0640 thuộc nhóm `casa-form`, user
+chạy app (`casa`) được thêm vào nhóm đó: docs/TRIEN-KHAI.md mục 5d.
 
 Mỗi dòng (khóa do website đặt): thoi_gian (ISO, UTC), ten, sdt, thang_sinh, nam_sinh, co_so (mã: kim-ma,
 chua-lang, my-dinh, ciputra, chua-chon), ngon_ngu (vi/en), biet_qua (mã, có thể rỗng), nguon (nguồn truy
