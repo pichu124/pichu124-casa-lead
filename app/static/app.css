@@ -258,3 +258,8 @@ dl.bang.ghi-chu-bot dd:last-child { margin-bottom: 0; }
 .nut-gui form { margin: 0; }
 .nut-gui .nut, .nut-gui button { min-height: 40px; padding: 6px 14px; }
 .email-ph { margin: -8px 0 14px; font-size: 15px; overflow-wrap: anywhere; }
+.ds-danh-muc li { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ds-danh-muc .ten-lua-chon { flex: 1 1 8em; min-width: 0; }
+.sap-xep { display: inline-flex; gap: 4px; }
+.nut-nho { min-height: 36px; min-width: 40px; padding: 4px 8px; }
+.nut-nho:disabled { opacity: .3; cursor: default; }

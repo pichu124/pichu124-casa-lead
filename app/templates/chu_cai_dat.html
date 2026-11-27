@@ -60,9 +60,17 @@
 {% for loai, ds in danh_muc.items() %}
 <section class="hop">
   <h2>Danh mục: {{ loai }}</h2>
-  <ul class="lich-su">
+  <ul class="lich-su ds-danh-muc">
   {% for g in ds %}
-    <li>{{ g }}
+    <li><span class="ten-lua-chon">{{ g }}</span>
+      <span class="sap-xep">
+      {% for viec, ky, nhan, an in (("len_danh_muc", "▲", "Lên", loop.first), ("xuong_danh_muc", "▼", "Xuống", loop.last)) %}
+      <form method="post" action="/chu/cai-dat" class="trong-dong">
+        <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="viec" value="{{ viec }}">
+        <input type="hidden" name="loai" value="{{ loai }}"><input type="hidden" name="gia_tri" value="{{ g }}">
+        <button class="nut-nho" aria-label="{{ nhan }}: {{ g }}" {{ 'disabled' if an }}>{{ ky }}</button></form>
+      {% endfor %}
+      </span>
       <form method="post" action="/chu/cai-dat" class="trong-dong" onsubmit="return confirm('Bỏ lựa chọn này? Lead cũ vẫn giữ giá trị.')">
         <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="viec" value="bo_danh_muc">
         <input type="hidden" name="loai" value="{{ loai }}"><input type="hidden" name="gia_tri" value="{{ g }}"><button>Bỏ</button></form></li>

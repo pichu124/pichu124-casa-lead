@@ -263,6 +263,22 @@ GIOI_HAN_CAU_HINH = {THANG_DNH: (1, 12), NGAY_DNH: (1, 31), "Chưa liên lạc t
                      "Tuổi nhận học (tháng)": (0, 120), "Tuổi tối đa (tháng)": (1, 120)}
 
 
+def _doi_cho_danh_muc(conn: sqlite3.Connection, loai: str, gia_tri: str, buoc: int) -> bool:
+    """Đổi chỗ lựa chọn `gia_tri` với lựa chọn liền trên (buoc -1) hoặc liền dưới (+1) cùng loại. Đánh lại thu_tu
+    0, 1, 2… theo thứ tự đang hiện trước khi đổi (thu_tu có thể trùng). False khi không đổi được (đầu/cuối, không có)."""
+    ds = [r["id"] for r in conn.execute("SELECT id FROM danh_muc WHERE loai = ? ORDER BY thu_tu, id", (loai,))]
+    hang = conn.execute("SELECT id FROM danh_muc WHERE loai = ? AND gia_tri = ?", (loai, gia_tri)).fetchone()
+    if hang is None:
+        return False
+    i = ds.index(hang["id"])
+    j = i + buoc
+    if not 0 <= j < len(ds):
+        return False
+    ds[i], ds[j] = ds[j], ds[i]
+    conn.executemany("UPDATE danh_muc SET thu_tu = ? WHERE id = ?", [(k, x) for k, x in enumerate(ds)])
+    return True
+
+
 def _ngay_hop_le(thang: int, ngay: int) -> bool:
     try:
         date(2001, thang, ngay)  # năm không nhuận: 29/02 cũng bị từ chối
@@ -344,6 +360,9 @@ async def luu_cai_dat(request: Request):
             for k in ("telegram_nhom", "telegram_nhom_ten", "telegram_nhom_ma"):
                 db.dat_he_thong(conn, k, "")
             tb = "Đã gỡ nhóm. Tin nhắc sáng quay lại gửi riêng cho từng người."
+        elif viec in ("len_danh_muc", "xuong_danh_muc") and form.get("loai") in db.LOAI_DANH_MUC:
+            tb = "Đã đổi thứ tự." if _doi_cho_danh_muc(conn, form.get("loai"), form.get("gia_tri") or "",
+                                                     -1 if viec == "len_danh_muc" else 1) else "Không đổi gì."
         elif viec == "bo_danh_muc" and form.get("loai") in db.LOAI_DANH_MUC:
             conn.execute("DELETE FROM danh_muc WHERE loai = ? AND gia_tri = ?", (form.get("loai"), form.get("gia_tri") or ""))
             tb = "Đã bỏ lựa chọn (lead cũ đã chọn giá trị này vẫn giữ nguyên)."
