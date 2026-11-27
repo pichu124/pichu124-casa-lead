@@ -8,6 +8,7 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 import os
+import re
 import sqlite3
 from datetime import date
 from pathlib import Path
@@ -304,7 +305,7 @@ def chi_tiet(request: Request, lead_id: int):
 # ------------------------------------------------------------------ thêm / sửa lead
 
 def _gia_tri_lead(form, nguoi: sqlite3.Row, cu: sqlite3.Row | None) -> tuple[dict, list[str]]:
-    v = {k: _chu_nhan(form, k) for k in ("ten_ph", "sdt", "ten_be", "tuoi_be", "nguon", "chien_dich",
+    v = {k: _chu_nhan(form, k) for k in ("ten_ph", "sdt", "email", "ten_be", "tuoi_be", "nguon", "chien_dich",
                                          "chat_luong", "ly_do_chat_luong", "ghi_chu", "em_nho")}
     v["ph_quan_tam"] = _quan_tam_nhap(form)
     v["co_so"] = _co_so_nhap(form.getlist("co_so"))
@@ -316,6 +317,8 @@ def _gia_tri_lead(form, nguoi: sqlite3.Row, cu: sqlite3.Row | None) -> tuple[dic
         loi.append("Chưa nhập tên phụ huynh.")
     if len(logic.chu_so(v["sdt"])) < 9:
         loi.append("SĐT chưa đúng (cần ít nhất 9 chữ số).")
+    if v["email"] and (len(v["email"]) > 254 or not EMAIL.fullmatch(v["email"])):
+        loi.append("Email chưa đúng (vd ten@gmail.com). Không có thì để trống.")
     if v["chat_luong"] not in ("Trung bình", "Kém"):
         v["ly_do_chat_luong"] = ""
     if v["em_nho"] not in q.EM_NHO:
@@ -380,9 +383,14 @@ def _sale_hop_le(sale_id: int, cu: sqlite3.Row | None) -> bool:
         conn.close()
 
 
+CHUA_RO = "Chưa rõ"  # ô "Chưa rõ" của Cơ sở quan tâm: lưu là rỗng
+EMAIL = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
+
+
 def _co_so_nhap(chon: list[str]) -> str:
-    """Các cơ sở đã tích, theo thứ tự danh mục (giá trị lạ, vd cơ sở đã bỏ khỏi danh mục, xếp cuối). Không tích: rỗng."""
-    chon = list(dict.fromkeys(x.strip() for x in chon if x and x.strip() and "," not in x))
+    """Các cơ sở đã tích, theo thứ tự danh mục (giá trị lạ, vd cơ sở đã bỏ khỏi danh mục, xếp cuối). Không tích hoặc
+    chỉ tích Chưa rõ: rỗng."""
+    chon = list(dict.fromkeys(x.strip() for x in chon if x and x.strip() and "," not in x and x.strip() != CHUA_RO))
     conn = _conn()
     try:
         thu_tu = {c: i for i, c in enumerate(db.danh_muc(conn, "Cơ sở"))}

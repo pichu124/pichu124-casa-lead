@@ -159,6 +159,7 @@ def khoi_tao(conn: sqlite3.Connection) -> None:
     """Tạo bảng nếu chưa có, điền cấu hình mặc định. Chạy mỗi lần khởi động: không xoá gì."""
     conn.executescript(SCHEMA)
     _them_cot(conn, "cham_soc", "ly_do_chi_tiet", "TEXT NOT NULL DEFAULT ''")  # chi tiết khi lý do từ chối là "Khác"
+    _them_cot(conn, "lead", "email", "TEXT NOT NULL DEFAULT ''")  # không bắt buộc; để sale gửi mail
     for khoa, gia_tri in q.CAU_HINH_MAC_DINH.items():
         conn.execute("INSERT OR IGNORE INTO cau_hinh (khoa, gia_tri, y_nghia) VALUES (?, ?, ?)",
                      (khoa, gia_tri, q.Y_NGHIA_CAU_HINH.get(khoa, "")))

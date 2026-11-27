@@ -10,13 +10,15 @@
   <p class="thong-bao">Lead từ Messenger: chọn <strong>Sale phụ trách</strong> rồi bấm Lưu. Sale được giao nhận tin Telegram.</p>{% endif %}
   <label>Tên phụ huynh * <input name="ten_ph" value="{{ v.ten_ph or '' }}" required></label>
   <label>SĐT * <input name="sdt" value="{{ v.sdt or '' }}" inputmode="tel" required></label>
+  <label>Email <span class="nho">(không bắt buộc)</span> <input name="email" type="email" value="{{ v.email or '' }}" autocomplete="off" placeholder="vd ten@gmail.com"></label>
   <label>Tên bé <input name="ten_be" value="{{ v.ten_be or '' }}"></label>
   <label>Tuổi bé <input name="tuoi_be" value="{{ v.tuoi_be or '' }}" placeholder="vd 18 tháng, 2 tuổi rưỡi, sinh năm 2022"></label>
   <label>Ngày sinh bé <input name="ngay_sinh_be" type="date" value="{{ v.ngay_sinh_be or '' }}">
     <span class="nho">Điền khi phụ huynh cho ngày sinh. Để trống thì app ước tính từ Tuổi bé.</span></label>
-  <fieldset><legend>Cơ sở quan tâm <span class="nho">(chọn được nhiều; chưa rõ thì để trống)</span></legend>
+  <fieldset data-loai-tru="co_so"><legend>Cơ sở quan tâm <span class="nho">(chọn được nhiều)</span></legend>
     {% set co_so_chon = (v.co_so or '').split(', ') %}
     {% for c in ds_co_so %}<label class="chon"><input type="checkbox" name="co_so" value="{{ c }}" {{ 'checked' if c in co_so_chon }}> {{ c }}</label>{% endfor %}
+    <label class="chon"><input type="checkbox" name="co_so" value="Chưa rõ" {{ 'checked' if not v.co_so }}> Chưa rõ</label>
     {% for c in co_so_chon if c and c not in ds_co_so %}<label class="chon"><input type="checkbox" name="co_so" value="{{ c }}" checked> {{ c }} (đã bỏ)</label>{% endfor %}
   </fieldset>
   <label>Nguồn

@@ -257,3 +257,4 @@ dl.bang.ghi-chu-bot dd:last-child { margin-bottom: 0; }
 .nut-gui { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .nut-gui form { margin: 0; }
 .nut-gui .nut, .nut-gui button { min-height: 40px; padding: 6px 14px; }
+.email-ph { margin: -8px 0 14px; font-size: 15px; overflow-wrap: anywhere; }

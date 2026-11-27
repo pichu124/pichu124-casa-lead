@@ -23,3 +23,12 @@
   document.addEventListener('DOMContentLoaded', capNhat);
 })();
 
+
+// Ô "Chưa rõ" của Cơ sở quan tâm: tích Chưa rõ thì bỏ các cơ sở, tích một cơ sở thì bỏ Chưa rõ.
+document.addEventListener('change', function (e) {
+  var o = e.target, khung = o.closest && o.closest('[data-loai-tru]');
+  if (!khung || o.type !== 'checkbox' || !o.checked) return;
+  khung.querySelectorAll('input[type=checkbox]').forEach(function (x) {
+    if (x !== o && (o.value === 'Chưa rõ' || x.value === 'Chưa rõ')) x.checked = false;
+  });
+});
