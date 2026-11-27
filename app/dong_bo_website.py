@@ -33,10 +33,15 @@ def _tin(moi: list[dict]) -> str:
 def chay(conn: sqlite3.Connection) -> list[tuple[str, str]]:
     """Đọc tệp rồi báo đăng ký mới chờ giao. Trả các tin đã gửi (người nhận, nội dung). Không ném lỗi."""
     if website.dong_bo(conn) is None:
+        # Ngay sau triển khai tệp thường chưa có: ghi nhớ "chưa báo ai" để đăng ký đầu tiên vẫn được báo.
+        # Tệp có mà chưa đọc được (thiếu quyền) thì để nguyên, kẻo lúc sửa xong quyền lại báo dồn đăng ký cũ.
+        if website.chua_co_tep() and not db.lay_he_thong(conn, DA_BAO):
+            db.dat_he_thong(conn, DA_BAO, "[]")
+            conn.commit()
         return []
     cho = website.chua_nhan(conn, kem_trung=False)
     luu = db.lay_he_thong(conn, DA_BAO)
-    if not luu:  # lần đầu: ghi nhớ, không báo những đăng ký đã có từ trước
+    if luu == "":  # lần đầu: ghi nhớ, không báo những đăng ký đã có từ trước
         db.dat_he_thong(conn, DA_BAO, json.dumps(sorted(h["ma"] for h in cho)))
         conn.commit()
         return []

@@ -117,14 +117,16 @@ def doi_nguon(chu: str, ds_nguon: list[str]) -> tuple[str, str, str]:
 
 
 def khop_sale(chu: str, sale: list[tuple[int, str]]) -> int | None:
+    """Khớp ĐÚNG tên (bỏ dấu, không phân biệt hoa thường), đúng một người; không khớp chuỗi con ("Thủy" ≠ "Thu")."""
     k = bo_dau(chu)
-    if not k:
-        return None
-    dung = [i for i, ten in sale if bo_dau(ten) == k]
-    if len(dung) == 1:
-        return dung[0]
-    gan = [i for i, ten in sale if k in bo_dau(ten) or bo_dau(ten) in k]
-    return gan[0] if len(gan) == 1 else None
+    dung = [i for i, ten in sale if k and bo_dau(ten) == k]
+    return dung[0] if len(dung) == 1 else None
+
+
+def chuan_sdt(chu: str) -> str:
+    """Chữ số của SĐT; Google Sheets xuất cột số thì mất số 0 đầu (912345678): thêm lại để so trùng và lưu."""
+    so = logic.chu_so(chu)
+    return "0" + so if len(so) == 9 and not so.startswith("0") else so
 
 
 def chuan_bi(hang: list[list[str]], conn, nhac: bool) -> tuple[list[dict], Counter]:
@@ -135,8 +137,10 @@ def chuan_bi(hang: list[list[str]], conn, nhac: bool) -> tuple[list[dict], Count
         raise SystemExit("Không thấy hàng tiêu đề (cần có cột \"Tên phụ huynh\" và \"Phone\"). Kiểm tra lại tệp CSV.")
     dau, vt = tim
     ds_co_so, ds_nguon = db.danh_muc(conn, "Cơ sở"), db.danh_muc(conn, "Nguồn")
-    sale = [(r["id"], r["ten"]) for r in conn.execute("SELECT id, ten FROM nguoi_dung WHERE vai_tro = 'sale'")]
-    da_co = {logic.chu_so(r[0]) for r in conn.execute("SELECT sdt FROM lead")}
+    sale = [(r["id"], r["ten"]) for r in conn.execute(
+        "SELECT id, ten FROM nguoi_dung WHERE vai_tro = 'sale' AND dang_lam = 1")]
+    ten_sale = dict(sale)
+    da_co = {chuan_sdt(r[0]) for r in conn.execute("SELECT sdt FROM lead")}
     hom_nay = ghi_gio(bay_gio()).split(" ")[0]
     kq = []
 
@@ -148,7 +152,7 @@ def chuan_bi(hang: list[list[str]], conn, nhac: bool) -> tuple[list[dict], Count
         if not any(x.strip() for x in h):
             continue
         dem["hàng có dữ liệu"] += 1
-        ten, so, ngay = o(h, "ten_ph"), logic.chu_so(o(h, "sdt")), doc_ngay(o(h, "ngay"))
+        ten, so, ngay = o(h, "ten_ph"), chuan_sdt(o(h, "sdt")), doc_ngay(o(h, "ngay"))
         if not ten:
             dem["bỏ: thiếu tên"] += 1
             continue
@@ -177,11 +181,14 @@ def chuan_bi(hang: list[list[str]], conn, nhac: bool) -> tuple[list[dict], Count
             email = ""
         sale_id = khop_sale(o(h, "sale"), sale)
         dem["có sale phụ trách" if sale_id else "chưa giao sale (không khớp tên)"] += 1
+        if o(h, "sale"):  # chỉ tên sale (không phải dữ liệu phụ huynh): để chủ soát cách khớp trước khi ghi
+            dem[f"sale: {o(h, 'sale')} → {ten_sale[sale_id] if sale_id else '(chưa giao)'}"] += 1
         dem[f"nguồn: {nguon or '(trống)'}"] += 1
         co_so = doi_co_so(o(h, "co_so"), ds_co_so)
         dem["có cơ sở" if co_so else "cơ sở trống"] += 1
         kq.append({
-            "ngay_nhan": f"{ngay.isoformat()} 08:00:00", "ten_ph": ten, "sdt": o(h, "sdt"), "email": email,
+            "ngay_nhan": f"{ngay.isoformat()} 08:00:00", "ten_ph": ten,
+            "sdt": so if logic.chu_so(o(h, "sdt")) != so else o(h, "sdt"), "email": email,
             "ten_be": o(h, "ten_be"), "tuoi_be": f"sinh {tuoi}" if ngay_sinh else tuoi,
             "ngay_sinh_be": ngay_sinh.isoformat() if ngay_sinh else None, "co_so": co_so, "nguon": nguon,
             "chien_dich": chien_dich, "sale_id": sale_id, "ghi_chu": "\n".join(ghi), "tam_dung": 0 if nhac else 1,
@@ -211,7 +218,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         db.khoi_tao(conn)
         ds, dem = chuan_bi(hang, conn, a.nhac)
-        for k in sorted(dem, key=lambda k: (k.startswith("nguồn"), k)):
+        for k in sorted(dem, key=lambda k: (k.startswith("sale:"), k.startswith("nguồn"), k)):
             print(f"{k}: {dem[k]}")
         if not a.ghi:
             print("\nCHẠY THỬ: chưa ghi gì. Xem số đếm, sao lưu (scripts/sao_luu.py), rồi chạy lại với --ghi.")

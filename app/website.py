@@ -50,9 +50,23 @@ def duong_dan() -> Path:
 
 
 def da_cau_hinh() -> bool:
-    """Có tệp và đọc được. Tệp chưa có (website chưa nhận đăng ký nào) cũng coi như chưa cấu hình."""
-    p = duong_dan()
-    return p.is_file() and os.access(p, os.R_OK)
+    """Có tệp và đọc được. Tệp chưa có (website chưa nhận đăng ký nào) cũng coi như chưa cấu hình.
+    Không bao giờ ném lỗi: thiếu quyền vào thư mục (user chạy app chưa ở nhóm casa-form) thì trả False,
+    kẻo menu Quản trị và tin nhắc sáng hỏng theo. os.path.isfile nuốt OSError, Path.is_file thì không."""
+    p = str(duong_dan())
+    return os.path.isfile(p) and os.access(p, os.R_OK)
+
+
+def chua_co_tep() -> bool:
+    """Tệp chưa tồn tại (không phải thiếu quyền): website chưa nhận đăng ký nào."""
+    p = str(duong_dan())
+    try:
+        os.stat(p)
+    except FileNotFoundError:
+        return True
+    except OSError:
+        return False
+    return False
 
 
 def _ma(h: dict) -> str:
@@ -76,8 +90,9 @@ def dong_bo(conn: sqlite3.Connection) -> int | None:
     if not da_cau_hinh():
         return None
     try:
-        dong = duong_dan().read_text(encoding="utf-8").splitlines()
-    except OSError as e:
+        # errors="replace": đọc trúng lúc form đang ghi dở một ký tự nhiều byte thì dòng đó thành JSON hỏng, bị bỏ qua
+        dong = duong_dan().read_text(encoding="utf-8", errors="replace").splitlines()
+    except (OSError, ValueError) as e:
         log.warning("Không đọc được tệp đăng ký website: %s", type(e).__name__)
         db.dat_he_thong(conn, "website_loi", f"{dongho.gio_vn(dongho.bay_gio())}: không đọc được tệp ({type(e).__name__})")
         conn.commit()

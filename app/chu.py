@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import csv
 import io
+import logging
 import re
 import sqlite3
 from datetime import date
@@ -22,6 +23,7 @@ from . import db, dongho, logic, messenger, quy_tac_nhac as q, telegram, website
 from .main import KhongThay, _bieu_mau, _chu, _conn, _doc_telegram, _ngay_nhap, _nguoi, _ve, _ve_lai
 
 router = APIRouter(prefix="/chu")
+log = logging.getLogger("casa_lead.chu")
 
 
 def _tat_ca(conn: sqlite3.Connection, nguoi: sqlite3.Row, co_so: str = "") -> list[logic.LeadTinh]:
@@ -37,7 +39,10 @@ def trang_chu(request: Request):
         nguoi = _nguoi(request, conn)
         _chu(nguoi)
         so = sum(q.bo_quen(lt.giai_doan, lt.khan) for lt in _tat_ca(conn, nguoi))
-        website.dong_bo(conn)  # đọc tệp cục bộ, nhanh: số trên menu luôn mới
+        try:  # đọc tệp cục bộ, nhanh: số trên menu luôn mới. Tệp của website hỏng không được làm hỏng menu
+            website.dong_bo(conn)
+        except Exception:  # noqa: BLE001
+            log.exception("Đọc đăng ký website lỗi")
         return _ve(request, "chu.html", nguoi, so_bo_quen=so, so_messenger=messenger.so_chua_nhan(conn),
                    so_website=website.so_chua_nhan(conn), website_cau_hinh=website.da_cau_hinh(),
                    so_chua_giao=logic.so_chua_giao(conn),
@@ -108,7 +113,10 @@ def ds_website(request: Request, tb: str = ""):
     try:
         nguoi = _nguoi(request, conn)
         _chu(nguoi)
-        website.dong_bo(conn)
+        try:
+            website.dong_bo(conn)
+        except Exception:  # noqa: BLE001
+            log.exception("Đọc đăng ký website lỗi")
         lay = db.lay_he_thong(conn, "website_lay_luc")
         return _ve(request, "chu_website.html", nguoi, ds=website.chua_nhan(conn), tb=tb,
                    cau_hinh=website.da_cau_hinh(), tep=str(website.duong_dan()),

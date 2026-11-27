@@ -70,3 +70,35 @@ def test_nhan_ca_ban_chep_co_ten_co_so_day_du():
     assert nhap_crm_cu.doi_nguon("Zalo / Zalo OA", ["Zalo"])[0] == "Zalo"
     assert nhap_crm_cu.doi_nguon("Kiddi Hub", ["Zalo"]) == ("", "Kiddi Hub", "")  # chưa có "Đối tác" trong danh mục
     assert nhap_crm_cu.doi_nguon("TikTok", ["Khác"]) == ("Khác", "TikTok", "")
+
+
+def test_so_dien_thoai_mat_so_0_dau_van_bat_trung_va_luu_du_so(du_lieu, tmp_path):
+    conn = db.ket_noi()
+    conn.execute("INSERT INTO lead (ngay_nhan, ten_ph, sdt, tao_luc) VALUES ('2026-11-01 08:00:00', 'Đã Có Thử', "
+                 "'0914000011', '2026-11-01 08:00:00')")
+    conn.commit()
+    p = _tep(tmp_path, _h("8/4/2026", "Trùng Mất Số 0 Thử", "914000011"),   # Google Sheets bỏ số 0 đầu
+             _h("9/4/2026", "Mới Mất Số 0 Thử", "914000012"))
+    assert nhap_crm_cu.main([str(p), "--ghi"]) == 0
+    ten = {r["ten_ph"]: r["sdt"] for r in conn.execute("SELECT ten_ph, sdt FROM lead WHERE ghi_chu LIKE '[Nhập từ CRM cũ%'")}
+    assert ten == {"Mới Mất Số 0 Thử": "0914000012"}
+
+
+def test_khop_sale_dung_ten_chi_sale_dang_lam():
+    sale = [(1, "Thu"), (2, "Thủy"), (3, "Hà My")]
+    assert nhap_crm_cu.khop_sale("Thủy", sale) == 2
+    assert nhap_crm_cu.khop_sale("thuy", sale) == 2  # bỏ dấu, không phân biệt hoa thường
+    assert nhap_crm_cu.khop_sale("Thủy", [(1, "Thu")]) is None  # "Thủy" không được về sale "Thu"
+    assert nhap_crm_cu.khop_sale("Thủy Tiên", sale) is None  # không khớp chuỗi con
+    assert nhap_crm_cu.khop_sale("ha my", sale) == 3
+
+
+def test_chi_khop_sale_dang_lam_va_chay_thu_in_bang_ten_sale(du_lieu, tmp_path, capsys):
+    conn = db.ket_noi()
+    nghi = conn.execute("SELECT id, ten FROM nguoi_dung WHERE vai_tro = 'sale' ORDER BY id").fetchone()
+    conn.execute("UPDATE nguoi_dung SET dang_lam = 0 WHERE id = ?", (nghi["id"],))
+    conn.commit()
+    p = _tep(tmp_path, _h("8/4/2026", "Sale Nghỉ Thử", "0914000021", sale=nghi["ten"]))
+    nhap_crm_cu.main([str(p)])
+    ra = capsys.readouterr().out
+    assert f"{nghi['ten']} → (chưa giao)" in ra and "Sale Nghỉ Thử" not in ra

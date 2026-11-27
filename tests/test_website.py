@@ -127,3 +127,47 @@ def test_tin_nhac_sang_co_so_website(tep):
     chu = conn.execute("SELECT * FROM nguoi_dung WHERE vai_tro = 'chu'").fetchone()
     from datetime import date
     assert "Website chưa giao: 2" in nhac_sang.tin_cho_chu(conn, chu, date(2026, 11, 4))
+
+
+def test_khong_co_quyen_doc_thu_muc_khong_lam_sap_app_va_tin_nhac(du_lieu, tmp_path, monkeypatch):
+    """Thư mục website 0750 mà user chạy app chưa vào nhóm casa-form: stat ném PermissionError."""
+    import os
+    from datetime import date
+    p = tmp_path / "khoa" / "dang-ky.jsonl"
+    monkeypatch.setenv("CASA_WEBSITE_DANG_KY", str(p))
+    goc = os.stat
+
+    def stat_khoa(duong, *a, **k):
+        if str(duong).startswith(str(tmp_path / "khoa")):
+            raise PermissionError(13, "Permission denied", str(duong))
+        return goc(duong, *a, **k)
+    monkeypatch.setattr(os, "stat", stat_khoa)
+    assert website.da_cau_hinh() is False
+    assert website.dong_bo(db.ket_noi()) is None
+    c = dang_nhap("chu")
+    assert c.get("/chu").status_code == 200
+    assert c.get("/chu/website").status_code == 200
+    gui = nhac_sang.chay(db.ket_noi(), date(2026, 11, 4), thu=True)
+    assert gui  # vẫn có tin cho chủ và sale
+
+
+def test_tep_co_byte_hong_khong_lam_sap(tep, tmp_path):
+    p = tmp_path / "dang-ky.jsonl"
+    with p.open("ab") as f:
+        f.write(b'{"ten": "\xe1\xbb')  # form đang ghi dở một ký tự nhiều byte
+    conn = db.ket_noi()
+    assert website.dong_bo(conn) == 2
+    c = dang_nhap("chu")
+    assert c.get("/chu").status_code == 200 and c.get("/chu/website").status_code == 200
+
+
+def test_chua_co_tep_luc_trien_khai_thi_dang_ky_dau_tien_van_duoc_bao(du_lieu, tmp_path, monkeypatch):
+    p = tmp_path / "dang-ky.jsonl"
+    monkeypatch.setenv("CASA_WEBSITE_DANG_KY", str(p))
+    conn = db.ket_noi()
+    conn.execute("UPDATE nguoi_dung SET telegram_chat_id = '555' WHERE vai_tro = 'chu'")
+    conn.commit()
+    assert dong_bo_website.chay(conn) == []  # chưa có tệp
+    p.write_text(json.dumps(_dong("Đầu Web Thử", "0912000077")) + "\n", encoding="utf-8")
+    gui = dong_bo_website.chay(conn)
+    assert len(gui) == 1 and "Đầu Web Thử" in gui[0][1]
