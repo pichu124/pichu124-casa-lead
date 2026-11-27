@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Website chưa nhận · Casa chăm sóc lead{% endblock %}
+{% block noi_dung %}
+<a class="quay-lai" href="/chu">Quản trị</a>
+<h1>Website chưa nhận <small>{{ ds|length }} phụ huynh</small></h1>
+<p class="nho">Phụ huynh đăng ký tham quan trên website casadeibambini.edu.vn mà chưa có hồ sơ trong app. Bấm <strong>Giao lead</strong>:
+  app điền sẵn tên, SĐT, tháng sinh của bé, cơ sở và Nguồn (theo ô "Biết Casa qua" phụ huynh chọn); chọn sale rồi Lưu.
+  Đăng ký thử hoặc trùng thì bấm <strong>Bỏ qua</strong>.</p>
+{% if tb %}<p class="thong-bao">{{ tb }}</p>{% endif %}
+{% if not cau_hinh %}
+<p class="loi">App chưa đọc được tệp đăng ký của website ({{ tep }}): chưa có đăng ký nào, hoặc chưa cấp quyền đọc. Xem docs/TRIEN-KHAI.md mục "Lead website".</p>
+{% else %}
+{% if loi %}<p class="loi">Lần đọc gần nhất bị lỗi: {{ loi }}. Danh sách dưới là dữ liệu lần đọc được trước đó.</p>{% endif %}
+{% if lay_luc %}<p class="nho">Đọc lúc {{ lay_luc }}</p>{% endif %}
+{% if not ds %}<p class="trong">Không có đăng ký website nào chờ giao.</p>{% endif %}
+{% endif %}
+{% for h in ds %}
+<section class="hop">
+  <strong>{{ h.ten }}</strong>{% if h.sinh %} · bé sinh {{ h.sinh }}{% endif %}
+  <div>{{ h.sdt }}{% if h.ten_co_so %} · {{ h.ten_co_so }}{% endif %}</div>
+  <div class="nho">Đăng ký {{ h.gio_vn }}{% if h.ngon_ngu == 'en' %} · trang tiếng Anh{% endif %}
+    · biết Casa qua: {{ h.ten_biet_qua or 'không chọn' }}{% if h.nguon %} · nguồn truy cập: {{ h.nguon }}{% endif %}</div>
+  {% if h.trung %}<p class="loi">Trùng SĐT với: {% for r in h.trung %}<a href="/lead/{{ r.id }}">{{ r.ten_ph }}</a> (sale {{ r.ten_sale or 'chưa giao' }}){{ ', ' if not loop.last }}{% endfor %}.
+    Nếu là cùng phụ huynh thì không cần giao lại: bấm Bỏ qua, rồi báo sale đang phụ trách.</p>{% endif %}
+  <div class="hang-nut">
+    <a class="nut chinh" href="/lead-moi?website={{ h.ma|urlencode }}">Giao lead</a>
+    <form method="post" action="/chu/website/bo-qua" onsubmit="return confirm('Bỏ qua đăng ký này (đăng ký thử, hoặc đã có hồ sơ)?')">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="ma" value="{{ h.ma }}">
+      <button>Bỏ qua</button></form>
+  </div>
+</section>
+{% endfor %}
+{% endblock %}

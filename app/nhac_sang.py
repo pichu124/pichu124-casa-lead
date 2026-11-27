@@ -17,7 +17,7 @@ import sqlite3
 import sys
 from datetime import date
 
-from . import db, dongho, logic, messenger, quy_tac_nhac as q, telegram
+from . import db, dongho, logic, messenger, quy_tac_nhac as q, telegram, website
 
 log = logging.getLogger("casa_lead.nhac_sang")
 
@@ -67,6 +67,8 @@ def tin_cho_chu(conn: sqlite3.Connection, chu: sqlite3.Row, hom_nay: date) -> st
         dong += [f"⚠ Lead chưa giao sale: {logic.so_chua_giao(conn)} (mở app → Tất cả lead)"]
     if messenger.da_cau_hinh():
         dong += [f"Messenger chưa giao: {messenger.so_chua_nhan(conn)} (Quản trị → Messenger chưa nhận)"]
+    if website.da_cau_hinh():
+        dong += [f"Website chưa giao: {website.so_chua_nhan(conn)} (Quản trị → Website chưa nhận)"]
     return "\n".join(dong)
 
 
@@ -100,6 +102,8 @@ def tin_cho_nhom(conn: sqlite3.Connection, hom_nay: date) -> str:
             dong += [f"⚠ Lead chưa giao sale: {logic.so_chua_giao(conn)} (mở app → Tất cả lead)"]
         if messenger.da_cau_hinh():
             dong += [f"Messenger chưa giao: {messenger.so_chua_nhan(conn)}"]
+        if website.da_cau_hinh():
+            dong += [f"Website chưa giao: {website.so_chua_nhan(conn)}"]
     url = os.environ.get("CASA_LEAD_URL", "")
     if url:
         dong += ["", url]
@@ -117,6 +121,10 @@ def chay(conn: sqlite3.Connection, hom_nay: date, thu: bool = False, gui=None) -
             messenger.dong_bo(conn)
         except Exception:  # noqa: BLE001
             log.exception("Đồng bộ lead Messenger lỗi; tin nhắc dùng dữ liệu cũ")
+        try:
+            website.dong_bo(conn)
+        except Exception:  # noqa: BLE001
+            log.exception("Đọc đăng ký website lỗi; tin nhắc dùng dữ liệu cũ")
     chu = conn.execute("SELECT * FROM nguoi_dung WHERE vai_tro = 'chu' AND dang_lam = 1 ORDER BY id").fetchone()
     if chu is None:
         log.warning("Không có tài khoản chủ đang làm: bỏ qua bước ghi lại việc gửi đến hạn của mọi lead")

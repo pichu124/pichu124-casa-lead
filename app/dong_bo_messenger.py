@@ -1,4 +1,4 @@
-"""Lấy tab Leads của bot Messenger định kỳ (cron mỗi 5 phút) và báo ngay vào Telegram khi có phụ huynh mới chờ
+"""Lấy tab Leads của bot Messenger định kỳ (cron mỗi 5 phút; kèm đọc đăng ký website: app/dong_bo_website.py) và báo ngay vào Telegram khi có phụ huynh mới chờ
 giao sale, để chủ giao lead và sale gọi trong ngày thay vì đợi tới tin nhắc sáng.
 
     python -m app.dong_bo_messenger
@@ -14,7 +14,7 @@ import logging
 import sqlite3
 import sys
 
-from . import db, messenger, telegram
+from . import db, dong_bo_website, messenger, telegram
 
 log = logging.getLogger("casa_lead.dong_bo_messenger")
 DA_BAO = "messenger_da_bao"
@@ -67,6 +67,12 @@ def main() -> int:
         gui = chay(conn)
         if gui:
             log.info("Đã báo Messenger mới tới %d nơi", len(gui))
+        try:  # đăng ký website đi cùng cron này (không thêm dòng cron); lỗi bên này không chặn Messenger
+            gui_web = dong_bo_website.chay(conn)
+            if gui_web:
+                log.info("Đã báo đăng ký website mới tới %d nơi", len(gui_web))
+        except Exception:  # noqa: BLE001
+            log.exception("Đọc đăng ký website lỗi")
     finally:
         conn.close()
     return 0

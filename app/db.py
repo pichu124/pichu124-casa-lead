@@ -113,6 +113,14 @@ CREATE TABLE IF NOT EXISTS messenger (
     bo_qua_boi INTEGER REFERENCES nguoi_dung(id),
     bo_qua_luc TEXT
 );
+CREATE TABLE IF NOT EXISTS website (
+    ma TEXT PRIMARY KEY,
+    du_lieu TEXT NOT NULL,
+    thoi_gian TEXT NOT NULL DEFAULT '',
+    bo_qua INTEGER NOT NULL DEFAULT 0,
+    bo_qua_boi INTEGER REFERENCES nguoi_dung(id),
+    bo_qua_luc TEXT
+);
 CREATE TABLE IF NOT EXISTS he_thong (
     khoa TEXT PRIMARY KEY,
     gia_tri TEXT NOT NULL
@@ -160,6 +168,7 @@ def khoi_tao(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA)
     _them_cot(conn, "cham_soc", "ly_do_chi_tiet", "TEXT NOT NULL DEFAULT ''")  # chi tiết khi lý do từ chối là "Khác"
     _them_cot(conn, "lead", "email", "TEXT NOT NULL DEFAULT ''")  # không bắt buộc; để sale gửi mail
+    _them_cot(conn, "lead", "website_id", "TEXT NOT NULL DEFAULT ''")  # mã đăng ký website (bảng website) của lead giao từ form
     for khoa, gia_tri in q.CAU_HINH_MAC_DINH.items():
         conn.execute("INSERT OR IGNORE INTO cau_hinh (khoa, gia_tri, y_nghia) VALUES (?, ?, ?)",
                      (khoa, gia_tri, q.Y_NGHIA_CAU_HINH.get(khoa, "")))

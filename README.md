@@ -4,6 +4,7 @@ App web nhắc sale tuyển sinh của Casa dei Bambini (3 cơ sở, Hà Nội) 
 
 - **Sale** (điện thoại): Hôm nay, Của tôi, chi tiết lead, ghi nhận lần chăm sóc, thêm lead, tạo lead cho em. Chỉ thấy lead mình phụ trách.
 - **Chủ**: thấy tất cả lead, giao lead, quản lý tài khoản. (Đợt B: lead Messenger, bỏ quên, nhắc sale, theo dõi gửi ưu đãi / thông tin, báo cáo.) Gửi ưu đãi / thông tin là việc của sale: đến hạn thì hiện ở tab Hôm nay (mở Zalo, sale tự viết ưu đãi của cơ sở mình, bấm Đã gửi) và còn nhắc tới khi bấm Đã gửi.
+- **Lead từ website**: app đọc tệp đăng ký tham quan của form website trên cùng VPS (chỉ đọc), chủ giao ở Quản trị → Website chưa nhận; Nguồn điền sẵn theo ô "Biết Casa qua" phụ huynh chọn. Báo cáo tháng chia theo Nguồn và Chiến dịch.
 - **Nhắc mỗi sáng 8:00, thứ 2 – thứ 6** qua Telegram (bot riêng của app). Tin không bao giờ chứa SĐT.
 
 ## Quy tắc nhắc
@@ -41,6 +42,7 @@ Thử tin nhắc buổi sáng mà không gửi: `CASA_LEAD_DATA=/tmp/casa-lead-t
 | `CASA_LEAD_ENV=production` | Bật cookie chỉ-HTTPS |
 | `CASA_LEAD_SECRET` | Khoá ký cookie phiên (không đặt thì app tự tạo và giữ trong thư mục dữ liệu) |
 | `CASA_LEAD_URL` | Địa chỉ app, ghi cuối tin nhắc Telegram |
+| `CASA_WEBSITE_DANG_KY` | Tệp đăng ký tham quan của form website (mặc định `/var/lib/casa-website/dang-ky.jsonl`; user chạy app phải ở nhóm `casa-form`, xem docs/TRIEN-KHAI.md mục 5d) |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME` | Bot Telegram riêng của app (tạo bằng @BotFather). Token là bí mật, không ghi vào kho mã |
 
 ## Dữ liệu

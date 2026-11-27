@@ -16,6 +16,8 @@ for _bien in ("CASA_LEAD_ENV", "CASA_LEAD_SECRET", "CASA_LEAD_URL", "TELEGRAM_BO
               "LEADS_SHEET_WEBHOOK_URL", "LEADS_READ_TOKEN"):
     os.environ.pop(_bien, None)
 os.environ["CASA_LEAD_DATA"] = tempfile.mkdtemp(prefix="casa-lead-test-")
+# Không bao giờ đọc tệp đăng ký thật của website (mặc định /var/lib/casa-website/dang-ky.jsonl trên VPS)
+os.environ["CASA_WEBSITE_DANG_KY"] = os.path.join(os.environ["CASA_LEAD_DATA"], "khong-co-dang-ky.jsonl")
 
 from fastapi.testclient import TestClient  # noqa: E402
 

@@ -18,7 +18,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, Response
 from starlette.concurrency import run_in_threadpool
 
-from . import db, dongho, logic, messenger, quy_tac_nhac as q, telegram
+from . import db, dongho, logic, messenger, quy_tac_nhac as q, telegram, website
 from .main import KhongThay, _bieu_mau, _chu, _conn, _doc_telegram, _ngay_nhap, _nguoi, _ve, _ve_lai
 
 router = APIRouter(prefix="/chu")
@@ -37,7 +37,9 @@ def trang_chu(request: Request):
         nguoi = _nguoi(request, conn)
         _chu(nguoi)
         so = sum(q.bo_quen(lt.giai_doan, lt.khan) for lt in _tat_ca(conn, nguoi))
+        website.dong_bo(conn)  # đọc tệp cục bộ, nhanh: số trên menu luôn mới
         return _ve(request, "chu.html", nguoi, so_bo_quen=so, so_messenger=messenger.so_chua_nhan(conn),
+                   so_website=website.so_chua_nhan(conn), website_cau_hinh=website.da_cau_hinh(),
                    so_chua_giao=logic.so_chua_giao(conn),
                    messenger_cau_hinh=messenger.da_cau_hinh())
     finally:
@@ -94,6 +96,39 @@ async def bo_qua_messenger(request: Request):
                      (nguoi["id"], dongho.ghi_gio(dongho.bay_gio()), form.get("customer_id") or ""))
         conn.commit()
         return _ve_lai("/chu/messenger?" + urlencode({"tb": "Đã bỏ qua: phụ huynh này không hiện trong danh sách nữa."}))
+    finally:
+        conn.close()
+
+
+# ------------------------------------------------------------------ đăng ký website chưa nhận
+
+@router.get("/website", response_class=HTMLResponse)
+def ds_website(request: Request, tb: str = ""):
+    conn = _conn()
+    try:
+        nguoi = _nguoi(request, conn)
+        _chu(nguoi)
+        website.dong_bo(conn)
+        lay = db.lay_he_thong(conn, "website_lay_luc")
+        return _ve(request, "chu_website.html", nguoi, ds=website.chua_nhan(conn), tb=tb,
+                   cau_hinh=website.da_cau_hinh(), tep=str(website.duong_dan()),
+                   loi=db.lay_he_thong(conn, "website_loi"),
+                   lay_luc=dongho.gio_vn(dongho.doc_gio(lay)) if lay else "")
+    finally:
+        conn.close()
+
+
+@router.post("/website/bo-qua")
+async def bo_qua_website(request: Request):
+    form = await _bieu_mau(request)
+    conn = _conn()
+    try:
+        nguoi = _nguoi(request, conn)
+        _chu(nguoi)
+        conn.execute("UPDATE website SET bo_qua = 1, bo_qua_boi = ?, bo_qua_luc = ? WHERE ma = ?",
+                     (nguoi["id"], dongho.ghi_gio(dongho.bay_gio()), form.get("ma") or ""))
+        conn.commit()
+        return _ve_lai("/chu/website?" + urlencode({"tb": "Đã bỏ qua: đăng ký này không hiện trong danh sách nữa."}))
     finally:
         conn.close()
 
@@ -218,11 +253,34 @@ def ds_gui(request: Request, kieu: str, co_so: str = ""):
 # ------------------------------------------------------------------ báo cáo tháng
 
 def _hang_bao_cao(conn: sqlite3.Connection) -> tuple[list[dict], list[dict]]:
-    ho_so = [{"Mã lead": str(r["id"]), "Ngày nhận": r["ngay_nhan"], "Cơ sở": r["co_so"]}
-             for r in conn.execute("SELECT id, ngay_nhan, co_so FROM lead")]
+    ho_so = [{"Mã lead": str(r["id"]), "Ngày nhận": r["ngay_nhan"], "Cơ sở": r["co_so"], "Nguồn": r["nguon"],
+              "Chiến dịch": r["chien_dich"]}
+             for r in conn.execute("SELECT id, ngay_nhan, co_so, nguon, chien_dich FROM lead")]
     cs = [{"Mã lead": str(r["lead_id"]), "Tình trạng": r["tinh_trang"]}
           for r in conn.execute("SELECT lead_id, tinh_trang FROM cham_soc")]
     return ho_so, cs
+
+
+CHUA_GHI = "(chưa ghi)"
+SO_CHIEN_DICH = 15  # bảng chiến dịch chỉ hiện chừng này dòng nhiều lead nhất
+
+
+def _theo_nhom(ho_so: list[dict], cs: list[dict], thang: str, cot: str, thu_tu: list[str]) -> list[dict]:
+    """Phễu tháng chia theo một cột (Nguồn, Chiến dịch) của các lead nhận trong tháng. Chỉ nhóm có lead mới.
+    Nhóm xếp theo thứ tự danh mục `thu_tu`, nhóm ngoài danh mục theo số lead giảm dần, ô trống cuối cùng."""
+    nhom: dict[str, list[dict]] = {}
+    for h in ho_so:
+        if h["Ngày nhận"].startswith(thang):
+            nhom.setdefault((h[cot] or "").strip() or CHUA_GHI, []).append(h)
+    vi_tri = {g: i for i, g in enumerate(thu_tu)}
+    ten = sorted(nhom, key=lambda g: (g == CHUA_GHI, vi_tri.get(g, len(vi_tri)), -len(nhom[g]), g))
+    hang = []
+    for g in ten:
+        dem = q.thong_ke_thang(nhom[g], cs, thang, q.TAT_CA)
+        moi = dem[q.BUOC_PHEU[0]]
+        hang.append(dict(ten=g, so=[dem[b] for b in q.BUOC_PHEU],
+                         ty_le=f"{dem['Đã đặt cọc'] * 100 // moi}%" if moi else "–"))
+    return hang
 
 
 def _thang_truoc(thang: str) -> str:
@@ -248,7 +306,11 @@ def bao_cao(request: Request, thang: str = "", co_so: str = q.TAT_CA):
             tren = dem[q.BUOC_PHEU[i - 1]] if i else None
             buoc.append(dict(ten=b, so=dem[b], so_moi=f"{dem[b] * 100 // moi}%" if moi else "–",
                              so_truoc=(f"{dem[b] * 100 // tren}%" if tren else "–") if i else ""))
+        theo_nguon = _theo_nhom(ho_so, cs, thang, "Nguồn", db.danh_muc(conn, "Nguồn"))
+        chien_dich = [h for h in _theo_nhom(ho_so, cs, thang, "Chiến dịch", []) if h["ten"] != CHUA_GHI]
+        chien_dich = sorted(chien_dich, key=lambda h: -h["so"][0])[:SO_CHIEN_DICH]
         return _ve(request, "chu_bao_cao.html", nguoi, buoc=buoc, thang=thang, co_so=co_so,
+                   theo_nguon=theo_nguon, chien_dich=chien_dich, ten_buoc=q.BUOC_PHEU,
                    moi_truoc=truoc[q.BUOC_PHEU[0]], ds_co_so=[q.TAT_CA] + db.danh_muc(conn, "Cơ sở"))
     finally:
         conn.close()

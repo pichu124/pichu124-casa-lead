@@ -21,7 +21,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import auth, db, dongho, logic, messenger as messenger_mod, quy_tac_nhac as q, telegram
+from . import auth, db, dongho, logic, messenger as messenger_mod, quy_tac_nhac as q, telegram, website as website_mod
 
 log = logging.getLogger("casa_lead")
 THU_MUC = Path(__file__).resolve().parent
@@ -410,7 +410,7 @@ def _ve_form_lead(request, conn, nguoi, v, loi, lead_id=None, status_code=200):
 
 
 @app.get("/lead-moi", response_class=HTMLResponse)
-def lead_moi_trang(request: Request, em_cua: int = 0, messenger: str = ""):
+def lead_moi_trang(request: Request, em_cua: int = 0, messenger: str = "", website: str = ""):
     conn = _conn()
     try:
         nguoi = _nguoi(request, conn)
@@ -421,6 +421,12 @@ def lead_moi_trang(request: Request, em_cua: int = 0, messenger: str = ""):
             if h is None:
                 raise KhongThay()
             v.update(messenger_mod.dien_san(h, db.danh_muc(conn, "Cơ sở"), db.danh_muc(conn, "Nguồn")), sale_id=None)
+        if website:  # chủ bấm Giao lead ở màn Website chưa nhận
+            _chu(nguoi)
+            h = website_mod.mot_hang(conn, website)
+            if h is None:
+                raise KhongThay()
+            v.update(website_mod.dien_san(h, db.danh_muc(conn, "Cơ sở"), db.danh_muc(conn, "Nguồn")), sale_id=None)
         if em_cua:
             anh = logic.mot_lead(conn, nguoi, em_cua)
             if anh is None:
@@ -447,6 +453,13 @@ async def lead_moi(request: Request):
             da = conn.execute("SELECT id FROM lead WHERE customer_id = ?", (cid,)).fetchone()
             if da:
                 loi.append(f"Phụ huynh Messenger này đã được giao (lead #{da['id']}). Mở Tất cả để xem.")
+        wid = _chu_nhan(form, "website_id")
+        # Mã đăng ký website: cũng chỉ nhận từ chủ, và chỉ khi đúng là một đăng ký đã đọc từ tệp của website
+        if wid and nguoi["vai_tro"] == "chu" and website_mod.mot_hang(conn, wid) is not None:
+            v["website_id"] = wid
+            da = conn.execute("SELECT id FROM lead WHERE website_id = ?", (wid,)).fetchone()
+            if da:
+                loi.append(f"Đăng ký website này đã được giao (lead #{da['id']}). Mở Tất cả để xem.")
         if loi:
             return _ve_form_lead(request, conn, nguoi, v, loi, status_code=400)
         trung = _trung_can_bao(conn, v)

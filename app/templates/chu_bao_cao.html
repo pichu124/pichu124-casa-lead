@@ -10,8 +10,26 @@
 </form>
 <p class="nho">Tháng {{ thang[5:] }}/{{ thang[:4] }} · {{ co_so }}. Đếm lead nhận trong tháng và đã qua tới bước đó (tính cả bước sau).
   Tháng trước: {{ moi_truoc }} lead mới.</p>
-<table class="bang-so">
+<div class="cuon-ngang"><table class="bang-so">
   <thead><tr><th>Bước</th><th>Số lead</th><th>So với lead mới</th><th>So với bước trên</th></tr></thead>
   <tbody>{% for b in buoc %}<tr><td>{{ b.ten }}</td><td>{{ b.so }}</td><td>{{ b.so_moi }}</td><td>{{ b.so_truoc }}</td></tr>{% endfor %}</tbody>
-</table>
+</table></div>
+
+<h2>Theo nguồn</h2>
+<p class="nho">Phụ huynh biết Casa qua đâu (ô Nguồn của hồ sơ), cùng tháng và cơ sở như trên. Cột cuối: tỷ lệ đặt cọc so với lead mới.</p>
+{% if theo_nguon %}
+<div class="cuon-ngang"><table class="bang-so">
+  <thead><tr><th>Nguồn</th>{% for t in ten_buoc %}<th>{{ t }}</th>{% endfor %}<th>Đặt cọc / lead mới</th></tr></thead>
+  <tbody>{% for h in theo_nguon %}<tr><td>{{ h.ten }}</td>{% for so in h.so %}<td>{{ so }}</td>{% endfor %}<td>{{ h.ty_le }}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% else %}<p class="trong">Tháng này chưa có lead mới.</p>{% endif %}
+
+<h2>Theo chiến dịch</h2>
+<p class="nho">Ô Chiến dịch: tên quảng cáo (lead Messenger), nguồn truy cập website (vd google-maps), tên đối tác. Tối đa 15 dòng nhiều lead nhất.</p>
+{% if chien_dich %}
+<div class="cuon-ngang"><table class="bang-so">
+  <thead><tr><th>Chiến dịch</th>{% for t in ten_buoc %}<th>{{ t }}</th>{% endfor %}<th>Đặt cọc / lead mới</th></tr></thead>
+  <tbody>{% for h in chien_dich %}<tr><td>{{ h.ten }}</td>{% for so in h.so %}<td>{{ so }}</td>{% endfor %}<td>{{ h.ty_le }}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% else %}<p class="trong">Tháng này chưa có lead nào ghi chiến dịch.</p>{% endif %}
 {% endblock %}

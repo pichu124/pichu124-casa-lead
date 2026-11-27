@@ -8,6 +8,8 @@
   <input type="hidden" name="csrf" value="{{ csrf }}">
   {% if v.customer_id and not lead_id %}<input type="hidden" name="customer_id" value="{{ v.customer_id }}">
   <p class="thong-bao">Lead từ Messenger: chọn <strong>Sale phụ trách</strong> rồi bấm Lưu. Sale được giao nhận tin Telegram.</p>{% endif %}
+  {% if v.website_id and not lead_id %}<input type="hidden" name="website_id" value="{{ v.website_id }}">
+  <p class="thong-bao">Đăng ký từ website: kiểm tra Nguồn và Cơ sở, chọn <strong>Sale phụ trách</strong> rồi bấm Lưu. Sale được giao nhận tin Telegram.</p>{% endif %}
   <label>Tên phụ huynh * <input name="ten_ph" value="{{ v.ten_ph or '' }}" required></label>
   <label>SĐT * <input name="sdt" value="{{ v.sdt or '' }}" inputmode="tel" required></label>
   <label>Email <span class="nho">(không bắt buộc)</span> <input name="email" type="email" value="{{ v.email or '' }}" autocomplete="off" placeholder="vd ten@gmail.com"></label>

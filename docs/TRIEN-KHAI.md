@@ -228,6 +228,62 @@ App đọc tab `Leads` qua chính web app Apps Script mà bot dùng để ghi, b
 
 App lấy lại tab Leads mỗi 5 phút từ 7:00 tới 21:55 (cron `app.dong_bo_messenger`, mục 5c, kèm tin báo phụ huynh mới chờ giao), mỗi khi chủ mở màn này (cách nhau ít nhất 1 phút) và trước tin nhắc 8:00. Không ghi gì vào Sheet.
 
+## 5d. Đọc đăng ký tham quan từ website
+
+App đọc tệp `/var/lib/casa-website/dang-ky.jsonl` mà dịch vụ form của website (repo `pichu124-casa-website`) ghi trên cùng VPS. App **chỉ đọc**, không ghi, không xoá, không gọi dịch vụ form. Website tắt hay app tắt thì bên kia vẫn chạy bình thường.
+
+Làm một lần, theo thứ tự:
+
+1. Cập nhật website lên bản có quyền đọc theo nhóm (repo website, QUYET-DINH Q43), rồi cài lại dịch vụ form. Bước này đổi tệp đăng ký sang 0640, thư mục sang 0750, và tệp mật khẩu `form.env` sang chỉ root:
+
+   ```bash
+   sudo bash /opt/casa-website/src/deploy/cai-dich-vu-form.sh
+   ```
+
+2. Cho user `casa` (chạy app này) vào nhóm `casa-form` để đọc được tệp. Nhóm này chỉ đọc được dữ liệu đăng ký, không đọc được mật khẩu email của form:
+
+   ```bash
+   sudo usermod -aG casa-form casa
+   sudo systemctl restart casa-lead
+   ```
+
+3. Kiểm tra (in `đọc được` là đạt; chưa có đăng ký nào thì tệp chưa tồn tại, đợi có đăng ký đầu tiên):
+
+   ```bash
+   sudo -u casa test -r /var/lib/casa-website/dang-ky.jsonl && echo "đọc được"
+   ```
+
+4. Mở **Quản trị → Website chưa nhận**: thấy các phụ huynh đã đăng ký trên website. Đăng ký thử (tên "Thử nghiệm website", SĐT 0900000000) thì bấm **Bỏ qua**.
+
+Đặt tệp ở chỗ khác thì thêm `CASA_WEBSITE_DANG_KY=<đường dẫn>` vào `/etc/casa-lead.env`. Không cần thêm dòng cron: cron 5 phút của Messenger (mục 5c) đọc luôn tệp này và báo nhóm Telegram khi có đăng ký mới (mỗi đăng ký báo một lần, lần chạy đầu chỉ ghi nhớ, tin không có SĐT). Cron chạy bằng user `casa` nên nhận nhóm mới từ lần chạy kế tiếp.
+
+## 5e. Nhập phụ huynh từ CRM Google Sheets cũ (làm một lần)
+
+Script `scripts/nhap_crm_cu.py` nhập phụ huynh từ tệp "2026 CRM MARKETING" (trang ContactDetails). Quy tắc đổi cơ sở, nguồn, sale ghi ở đầu script. Lead nhập vào **tạm dừng nhắc** (không làm ngập tab Hôm nay); chủ bật lại từng lead nếu muốn chăm sóc tiếp. SĐT đã có trong app thì bỏ qua, chạy lại không nhập trùng.
+
+1. Trên máy tính: mở tệp CRM, chọn trang **ContactDetails(MKT)**, Tệp → Tải xuống → **CSV**. Tệp có tên, SĐT phụ huynh: không gửi qua Zalo hay email.
+2. Chép lên VPS (thay `<tệp>` bằng tên tệp vừa tải):
+
+   ```bash
+   scp "<tệp>.csv" casa@103.195.238.114:/home/casa/crm-cu.csv
+   ```
+
+3. Trên VPS: sao lưu, chạy thử (chỉ in số đếm, không ghi gì), xem số đếm có hợp lý không:
+
+   ```bash
+   cd /opt/casa-lead && CASA_LEAD_DATA=/var/lib/casa-lead .venv/bin/python scripts/sao_luu.py
+   CASA_LEAD_DATA=/var/lib/casa-lead .venv/bin/python scripts/nhap_crm_cu.py /home/casa/crm-cu.csv
+   ```
+
+4. Ghi thật, rồi xoá tệp CSV:
+
+   ```bash
+   CASA_LEAD_DATA=/var/lib/casa-lead .venv/bin/python scripts/nhap_crm_cu.py /home/casa/crm-cu.csv --ghi
+   rm /home/casa/crm-cu.csv
+   ```
+
+Báo cáo tháng (Quản trị → Báo cáo tháng) tính các lead này vào đúng tháng phụ huynh quan tâm (4–9/2026).
+
 ## 6. Dùng thử
 
 Mở https://casa-lead.duckdns.org trên điện thoại, đăng nhập tài khoản chủ.
