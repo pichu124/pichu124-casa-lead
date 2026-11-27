@@ -57,3 +57,12 @@ def test_sale_khong_doi_duoc(du_lieu):
     r = s.post("/chu/cai-dat", data={"csrf": csrf(s, "/tai-khoan"), "viec": "len_danh_muc", "loai": "Nguồn",
                                      "gia_tri": ds[1]}, follow_redirects=False)
     assert r.status_code == 403 and _ds() == ds
+
+
+def test_trang_tai_lai_giu_cho_dang_cuon(du_lieu):
+    # app.js nhớ chỗ cuộn khi gửi form trong `.ds-danh-muc` (đã thử bằng trình duyệt thật): giữ đủ ba mắt xích
+    from pathlib import Path
+    trang = dang_nhap("chu").get("/chu/cai-dat").text
+    assert 'class="lich-su ds-danh-muc"' in trang and "/static/app.js?v=6" in trang
+    js = (Path(__file__).parent.parent / "app/static/app.js").read_text(encoding="utf-8")
+    assert "closest('.ds-danh-muc')" in js and "scrollTo(0, luu.y)" in js

@@ -32,3 +32,20 @@ document.addEventListener('change', function (e) {
     if (x !== o && (o.value === 'Chưa rõ' || x.value === 'Chưa rõ')) x.checked = false;
   });
 });
+
+
+// Bấm ▲ ▼ / Bỏ ở Cài đặt → Danh mục: trang tải lại vẫn ở chỗ đang làm, không nhảy lên đầu trang.
+// Chỉ nhớ trong vài giây và chỉ cho đúng trang đó; bấm Huỷ ở hộp xác nhận (defaultPrevented) thì không nhớ.
+(function () {
+  var KHOA = 'giu-cuon';
+  document.addEventListener('submit', function (e) {
+    if (e.defaultPrevented || !e.target.closest('.ds-danh-muc')) return;
+    try { sessionStorage.setItem(KHOA, JSON.stringify({ trang: location.pathname, y: scrollY, luc: Date.now() })); } catch (_) {}
+  });
+  var luu = null;
+  try { luu = JSON.parse(sessionStorage.getItem(KHOA) || 'null'); sessionStorage.removeItem(KHOA); } catch (_) {}
+  if (luu && luu.trang === location.pathname && Date.now() - luu.luc < 15000) {
+    var cuon = function () { scrollTo(0, luu.y); };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', cuon); else cuon();
+  }
+})();
