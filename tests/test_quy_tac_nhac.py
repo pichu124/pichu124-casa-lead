@@ -616,6 +616,16 @@ class NgayGuiBaoCaoThang(unittest.TestCase):
         self.assertIsNone(q.ngay_gui_bao_cao_thang(D(2026, 12, 11)))
         self.assertIsNone(q.ngay_gui_bao_cao_thang(D(2026, 11, 30)))
 
+    def test_gui_bu_chi_vao_ngay_lam_viec(self):
+        self.assertIsNone(q.ngay_gui_bao_cao_thang(D(2026, 12, 5)))  # thứ 7
+        self.assertEqual(q.ngay_gui_bao_cao_thang(D(2026, 12, 7)), "2026-11")  # thứ 2
+
+    def test_nghi_tet_dai_qua_ngay_10_van_gui(self):
+        nghi = {D(2030, 2, d) for d in range(1, 11)}  # nghỉ 01–10/02/2030, ngày làm việc đầu tiên 11/02 (thứ 2)
+        self.assertIsNone(q.ngay_gui_bao_cao_thang(D(2030, 2, 8), nghi))
+        self.assertEqual(q.ngay_gui_bao_cao_thang(D(2030, 2, 11), nghi), "2030-01")
+        self.assertIsNone(q.ngay_gui_bao_cao_thang(D(2030, 2, 12), nghi))  # quá ngày 10 thì chỉ ngày đầu tiên
+
     def test_ngay_1_roi_vao_cuoi_tuan_thi_gui_thu_2(self):
         self.assertIsNone(q.ngay_gui_bao_cao_thang(D(2026, 8, 1)))  # thứ 7
         self.assertEqual(q.ngay_gui_bao_cao_thang(D(2026, 8, 3)), "2026-07")  # thứ 2

@@ -591,10 +591,12 @@ def ngay_gui_bao_cao_thang(hom_nay: date, nghi: set[date] = frozenset()) -> str 
 
     Gửi báo cáo THÁNG TRƯỚC từ ngày làm việc đầu tiên của tháng: ngày 1 rơi vào thứ 7, Chủ nhật hay ngày lễ
     (tab Ngày nghỉ) thì dời tới ngày làm việc kế tiếp, để ban giám hiệu đọc trong giờ làm. Các ngày sau, tới ngày
-    HAN_GUI_BU_BAO_CAO, vẫn là ngày gửi để gửi bù khi hôm đó VPS tắt hay Telegram lỗi (app chỉ gửi nếu tháng đó
-    chưa gửi). Quá hạn đó thì thôi, kẻo triển khai giữa tháng lại gửi báo cáo cũ.
+    HAN_GUI_BU_BAO_CAO, các ngày làm việc vẫn là ngày gửi để gửi bù khi hôm đó VPS tắt hay Telegram lỗi (app chỉ
+    gửi nếu tháng đó chưa gửi). Quá hạn đó thì thôi, kẻo triển khai giữa tháng lại gửi báo cáo cũ; nghỉ dài (Tết)
+    làm ngày làm việc đầu tiên rơi sau hạn thì vẫn gửi đúng ngày đó.
     """
-    if not ngay_lam_viec_toi(hom_nay.replace(day=1), nghi) <= hom_nay or hom_nay.day > HAN_GUI_BU_BAO_CAO:
+    dau = ngay_lam_viec_toi(hom_nay.replace(day=1), nghi)
+    if hom_nay < dau or hom_nay.day > max(HAN_GUI_BU_BAO_CAO, dau.day) or la_ngay_nghi(hom_nay, nghi):
         return None
     truoc = hom_nay.replace(day=1) - timedelta(days=1)
     return f"{truoc.year}-{truoc.month:02d}"
