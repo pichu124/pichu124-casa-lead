@@ -49,3 +49,25 @@ document.addEventListener('change', function (e) {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', cuon); else cuon();
   }
 })();
+
+
+// Nút chép (data-chep="id ô chữ"): chép nội dung ô vào bộ nhớ tạm, đổi chữ nút vài giây để biết đã chép.
+// Trình duyệt không cho dùng clipboard API thì chọn chữ và dùng lệnh chép cũ.
+document.addEventListener('click', function (e) {
+  var nut = e.target.closest && e.target.closest('[data-chep]');
+  if (!nut) return;
+  var o = document.getElementById(nut.dataset.chep);
+  if (!o) return;
+  var cu = nut.dataset.chuCu || nut.textContent;
+  nut.dataset.chuCu = cu;
+  function xong(dc) {
+    nut.textContent = dc ? 'Đã chép ✓' : 'Chưa chép được, hãy giữ ngón tay trên ô để chép';
+    setTimeout(function () { nut.textContent = cu; }, 2500);
+  }
+  function cachCu() {
+    o.focus(); o.select();
+    try { xong(document.execCommand('copy')); } catch (_) { xong(false); }
+  }
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(o.value).then(function () { xong(true); }, cachCu);
+  else cachCu();
+});

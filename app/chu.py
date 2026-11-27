@@ -19,7 +19,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, Response
 from starlette.concurrency import run_in_threadpool
 
-from . import db, dongho, logic, messenger, quy_tac_nhac as q, telegram, website
+from . import bao_cao_thang as bct, db, dongho, logic, messenger, quy_tac_nhac as q, telegram, website
 from .main import KhongThay, _bieu_mau, _chu, _conn, _doc_telegram, _ngay_nhap, _nguoi, _ve, _ve_lai
 
 router = APIRouter(prefix="/chu")
@@ -260,40 +260,9 @@ def ds_gui(request: Request, kieu: str, co_so: str = ""):
 
 # ------------------------------------------------------------------ báo cáo tháng
 
-def _hang_bao_cao(conn: sqlite3.Connection) -> tuple[list[dict], list[dict]]:
-    ho_so = [{"Mã lead": str(r["id"]), "Ngày nhận": r["ngay_nhan"], "Cơ sở": r["co_so"], "Nguồn": r["nguon"],
-              "Chiến dịch": r["chien_dich"]}
-             for r in conn.execute("SELECT id, ngay_nhan, co_so, nguon, chien_dich FROM lead")]
-    cs = [{"Mã lead": str(r["lead_id"]), "Tình trạng": r["tinh_trang"]}
-          for r in conn.execute("SELECT lead_id, tinh_trang FROM cham_soc")]
-    return ho_so, cs
-
-
-CHUA_GHI = "(chưa ghi)"
-SO_CHIEN_DICH = 15  # bảng chiến dịch chỉ hiện chừng này dòng nhiều lead nhất
-
-
-def _theo_nhom(ho_so: list[dict], cs: list[dict], thang: str, cot: str, thu_tu: list[str]) -> list[dict]:
-    """Phễu tháng chia theo một cột (Nguồn, Chiến dịch) của các lead nhận trong tháng. Chỉ nhóm có lead mới.
-    Nhóm xếp theo thứ tự danh mục `thu_tu`, nhóm ngoài danh mục theo số lead giảm dần, ô trống cuối cùng."""
-    nhom: dict[str, list[dict]] = {}
-    for h in ho_so:
-        if h["Ngày nhận"].startswith(thang):
-            nhom.setdefault((h[cot] or "").strip() or CHUA_GHI, []).append(h)
-    vi_tri = {g: i for i, g in enumerate(thu_tu)}
-    ten = sorted(nhom, key=lambda g: (g == CHUA_GHI, vi_tri.get(g, len(vi_tri)), -len(nhom[g]), g))
-    hang = []
-    for g in ten:
-        dem = q.thong_ke_thang(nhom[g], cs, thang, q.TAT_CA)
-        moi = dem[q.BUOC_PHEU[0]]
-        hang.append(dict(ten=g, so=[dem[b] for b in q.BUOC_PHEU],
-                         ty_le=f"{dem['Đã đặt cọc'] * 100 // moi}%" if moi else "–"))
-    return hang
-
-
-def _thang_truoc(thang: str) -> str:
-    y, m = int(thang[:4]), int(thang[5:7])
-    return f"{y - 1}-12" if m == 1 else f"{y}-{m - 1:02d}"
+# Số liệu dùng chung với bản tóm tắt gửi ban giám hiệu (app/bao_cao_thang.py); tên cũ giữ cho test và mã cũ
+_hang_bao_cao, _theo_nhom, _thang_truoc = bct.hang_bao_cao, bct.theo_nhom, bct.thang_truoc
+CHUA_GHI, SO_CHIEN_DICH = bct.CHUA_GHI, bct.SO_CHIEN_DICH
 
 
 @router.get("/bao-cao", response_class=HTMLResponse)
@@ -315,11 +284,11 @@ def bao_cao(request: Request, thang: str = "", co_so: str = q.TAT_CA):
             buoc.append(dict(ten=b, so=dem[b], so_moi=f"{dem[b] * 100 // moi}%" if moi else "–",
                              so_truoc=(f"{dem[b] * 100 // tren}%" if tren else "–") if i else ""))
         theo_nguon = _theo_nhom(ho_so, cs, thang, "Nguồn", db.danh_muc(conn, "Nguồn"))
-        chien_dich = [h for h in _theo_nhom(ho_so, cs, thang, "Chiến dịch", []) if h["ten"] != CHUA_GHI]
-        chien_dich = sorted(chien_dich, key=lambda h: -h["so"][0])[:SO_CHIEN_DICH]
+        chien_dich = bct.chien_dich_nhieu_nhat(ho_so, cs, thang, SO_CHIEN_DICH)
         return _ve(request, "chu_bao_cao.html", nguoi, buoc=buoc, thang=thang, co_so=co_so,
                    theo_nguon=theo_nguon, chien_dich=chien_dich, ten_buoc=q.BUOC_PHEU,
-                   moi_truoc=truoc[q.BUOC_PHEU[0]], ds_co_so=[q.TAT_CA] + db.danh_muc(conn, "Cơ sở"))
+                   moi_truoc=truoc[q.BUOC_PHEU[0]], ds_co_so=[q.TAT_CA] + db.danh_muc(conn, "Cơ sở"),
+                   tom_tat=bct.tom_tat(conn, thang, kem_link=False))
     finally:
         conn.close()
 

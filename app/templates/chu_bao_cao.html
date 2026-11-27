@@ -32,4 +32,10 @@
   <tbody>{% for h in chien_dich %}<tr><td>{{ h.ten }}</td>{% for so in h.so %}<td>{{ so }}</td>{% endfor %}<td>{{ h.ty_le }}</td></tr>{% endfor %}</tbody>
 </table></div>
 {% else %}<p class="trong">Tháng này chưa có lead nào ghi chiến dịch.</p>{% endif %}
+
+<h2>Bản tóm tắt</h2>
+<p class="nho">Tháng {{ thang[5:] }}/{{ thang[:4] }}, mọi cơ sở. Cùng nội dung tin Telegram tự gửi nhóm quản lý vào ngày làm việc đầu
+  tháng sau. Bấm để chép rồi dán vào báo cáo hoặc Zalo.</p>
+<textarea id="tom-tat" class="tom-tat" readonly rows="14" aria-label="Bản tóm tắt">{{ tom_tat }}</textarea>
+<p><button type="button" class="nut chinh" data-chep="tom-tat">Chép bản tóm tắt</button></p>
 {% endblock %}

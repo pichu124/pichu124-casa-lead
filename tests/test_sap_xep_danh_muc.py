@@ -63,6 +63,6 @@ def test_trang_tai_lai_giu_cho_dang_cuon(du_lieu):
     # app.js nhớ chỗ cuộn khi gửi form trong `.ds-danh-muc` (đã thử bằng trình duyệt thật): giữ đủ ba mắt xích
     from pathlib import Path
     trang = dang_nhap("chu").get("/chu/cai-dat").text
-    assert 'class="lich-su ds-danh-muc"' in trang and "/static/app.js?v=6" in trang
+    assert 'class="lich-su ds-danh-muc"' in trang and "/static/app.js?v=7" in trang
     js = (Path(__file__).parent.parent / "app/static/app.js").read_text(encoding="utf-8")
     assert "closest('.ds-danh-muc')" in js and "scrollTo(0, luu.y)" in js

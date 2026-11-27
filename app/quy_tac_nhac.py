@@ -583,6 +583,18 @@ def thong_ke_thang(ho_so: list[dict], cham_soc: list[dict], thang: str, co_so: s
     return dem
 
 
+def ngay_gui_bao_cao_thang(hom_nay: date, nghi: set[date] = frozenset()) -> str | None:
+    """Tháng ("YYYY-MM") cần gửi báo cáo nếu hôm nay là ngày gửi, không thì None.
+
+    Gửi báo cáo THÁNG TRƯỚC vào ngày làm việc đầu tiên của tháng: ngày 1 rơi vào thứ 7, Chủ nhật hay ngày lễ
+    (tab Ngày nghỉ) thì dời tới ngày làm việc kế tiếp, để ban giám hiệu đọc trong giờ làm.
+    """
+    if hom_nay != ngay_lam_viec_toi(hom_nay.replace(day=1), nghi):
+        return None
+    truoc = hom_nay.replace(day=1) - timedelta(days=1)
+    return f"{truoc.year}-{truoc.month:02d}"
+
+
 # ---------------------------------------------------------------- dữ liệu mẫu (giả)
 
 COT_HO_SO = [

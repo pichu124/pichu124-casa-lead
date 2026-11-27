@@ -601,5 +601,26 @@ class TrangThaiLead(unittest.TestCase):
                     self.assertEqual(r.giai_doan, q.giai_doan(ls_c[-1] if ls_c else None, cu))
 
 
+
+class NgayGuiBaoCaoThang(unittest.TestCase):
+    """Báo cáo tháng trước gửi vào ngày làm việc đầu tiên của tháng (ngày 1 rơi vào thứ 7, CN, ngày lễ thì dời)."""
+
+    def test_ngay_1_la_ngay_lam_viec(self):
+        self.assertEqual(q.ngay_gui_bao_cao_thang(D(2026, 12, 1)), "2026-11")  # thứ 3
+        self.assertIsNone(q.ngay_gui_bao_cao_thang(D(2026, 12, 2)))
+        self.assertIsNone(q.ngay_gui_bao_cao_thang(D(2026, 11, 30)))
+
+    def test_ngay_1_roi_vao_cuoi_tuan_thi_gui_thu_2(self):
+        self.assertIsNone(q.ngay_gui_bao_cao_thang(D(2026, 8, 1)))  # thứ 7
+        self.assertEqual(q.ngay_gui_bao_cao_thang(D(2026, 8, 3)), "2026-07")  # thứ 2
+        self.assertEqual(q.ngay_gui_bao_cao_thang(D(2026, 11, 2)), "2026-10")  # 1/11 là CN
+
+    def test_ngay_le_dau_thang_va_thang_1(self):
+        nghi = {D(2027, 1, 1)}
+        self.assertIsNone(q.ngay_gui_bao_cao_thang(D(2027, 1, 1), nghi))
+        self.assertEqual(q.ngay_gui_bao_cao_thang(D(2027, 1, 4), nghi), "2026-12")  # thứ 6 lễ, rồi cuối tuần
+        self.assertEqual(q.ngay_gui_bao_cao_thang(D(2027, 1, 1)), "2026-12")  # không có ngày lễ: thứ 6 gửi luôn
+
+
 if __name__ == "__main__":
     unittest.main()
