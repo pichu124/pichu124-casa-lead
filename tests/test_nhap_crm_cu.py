@@ -102,3 +102,10 @@ def test_chi_khop_sale_dang_lam_va_chay_thu_in_bang_ten_sale(du_lieu, tmp_path, 
     nhap_crm_cu.main([str(p)])
     ra = capsys.readouterr().out
     assert f"{nghi['ten']} → (chưa giao)" in ra and "Sale Nghỉ Thử" not in ra
+
+
+def test_o_phan_sale_ghi_kem_so_thi_chay_thu_che_so(du_lieu, tmp_path, capsys):
+    p = _tep(tmp_path, _h("8/4/2026", "Kèm Số Thử", "0914000031", sale="Lan (PH gọi lại 0914 000 032)"))
+    nhap_crm_cu.main([str(p)])
+    ra = capsys.readouterr().out
+    assert "0914 000 032" not in ra and "000032" not in ra and "[SĐT]" in ra

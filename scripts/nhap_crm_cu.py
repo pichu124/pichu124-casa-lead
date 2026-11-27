@@ -41,6 +41,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app import db, logic  # noqa: E402
 from app.dongho import bay_gio, ghi_gio  # noqa: E402
 
+
+def _che_so(s: str) -> str:
+    """Ô "Phân sale" có khi bị ghi kèm SĐT: che mọi cụm từ 7 chữ số trở lên (cho phép cách, chấm, gạch) trước khi in."""
+    return re.sub(r"\+?\d[\d .\-]{5,}\d", lambda m: "[SĐT]" if len(re.sub(r"\D", "", m.group())) >= 7 else m.group(), s)
+
 DOI_TAC = {"ccfvn": "CCFVN", "kiddi hub": "Kiddi Hub", "huyen chibi": "Huyền Chibi"}
 MA_CO_SO = {"hk": "Chùa Láng", "chua lang": "Chùa Láng", "km": "Kim Mã", "kim ma": "Kim Mã",
             "flc": "Mỹ Đình", "my dinh": "Mỹ Đình"}
@@ -182,7 +187,7 @@ def chuan_bi(hang: list[list[str]], conn, nhac: bool) -> tuple[list[dict], Count
         sale_id = khop_sale(o(h, "sale"), sale)
         dem["có sale phụ trách" if sale_id else "chưa giao sale (không khớp tên)"] += 1
         if o(h, "sale"):  # chỉ tên sale (không phải dữ liệu phụ huynh): để chủ soát cách khớp trước khi ghi
-            dem[f"sale: {o(h, 'sale')} → {ten_sale[sale_id] if sale_id else '(chưa giao)'}"] += 1
+            dem[f"sale: {_che_so(o(h, 'sale'))} → {ten_sale[sale_id] if sale_id else '(chưa giao)'}"] += 1
         dem[f"nguồn: {nguon or '(trống)'}"] += 1
         co_so = doi_co_so(o(h, "co_so"), ds_co_so)
         dem["có cơ sở" if co_so else "cơ sở trống"] += 1
