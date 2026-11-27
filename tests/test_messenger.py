@@ -257,3 +257,14 @@ def test_ghi_chu_cua_bot_hien_va_dien_san_khi_giao(sheet):
     ghi_chu = re.search(r'<textarea name="ghi_chu"[^>]*>(.*?)</textarea>', form, re.S).group(1)
     assert ghi_chu.startswith("Bot đã tư vấn: Phụ huynh hỏi học phí lớp 3 tuổi")
     assert "Bot đã gửi: Học phí hệ Quốc tế (cơ sở Mỹ Đình) 03/11" in ghi_chu
+
+
+def test_email_bot_lay_duoc_dien_san_khi_giao(sheet):
+    hang, _ = sheet
+    hang[0]["email"] = "me.thu@vi-du.vn"
+    c = dang_nhap("chu")
+    c.get("/chu/messenger")  # mở màn Messenger: lấy Sheet về
+    form = c.get("/lead-moi?messenger=1001").text
+    assert re.search(r'name="email"[^>]*value="me\.thu@vi-du\.vn"', form)
+    # Sheet chưa có cột Email (script cũ) thì ô Email để trống
+    assert not re.search(r'name="email"[^>]*value="[^"]', c.get("/lead-moi?messenger=1002").text)

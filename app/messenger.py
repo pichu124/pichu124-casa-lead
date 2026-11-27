@@ -190,6 +190,7 @@ def dien_san(h: dict, ds_co_so: list[str], ds_nguon: list[str]) -> dict:
     return {
         "ten_ph": "" if ten == TEN_LA else ten,
         "sdt": h.get("phone", ""),
+        "email": h.get("email", ""),  # cột Email của bot (script Sheet mới); script cũ không có thì để trống
         "ten_be": h.get("kid_name", ""),
         "tuoi_be": h.get("kid_age", ""),
         "co_so": doan_co_so(h.get("campus", ""), ds_co_so),
