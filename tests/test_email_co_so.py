@@ -68,3 +68,14 @@ def test_sale_sua_duoc_email(du_lieu):
     s.post(f"/lead/{r['id']}/sua", data={"csrf": csrf(s, "/lead-moi"), "ten_ph": "Mai Thử", "sdt": r["sdt"],
                                          "email": "mai@vi-du.vn"})
     assert _lead()["email"] == "mai@vi-du.vn"
+
+
+def test_xuat_csv_co_cot_email_o_cuoi(du_lieu):
+    import csv
+    import io
+    c = dang_nhap("chu")
+    _them(c, email="mai@vi-du.vn")
+    hang = list(csv.reader(io.StringIO(c.get("/chu/xuat/ho-so-lead.csv").text.lstrip("﻿"))))
+    assert hang[0][-1] == "Email"  # thêm ở cuối: công thức dựa vào vị trí cột của sheet cũ không phải sửa
+    dong = next(h for h in hang if "Mai Thử" in h)
+    assert dong[-1] == "mai@vi-du.vn"

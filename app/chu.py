@@ -393,7 +393,7 @@ def xuat(request: Request, ten: str):
                             r["nguon"], r["chien_dich"], r["ph_quan_tam"], ten_sale.get(r["sale_id"], ""),
                             r["customer_id"], r["chat_luong"], r["ly_do_chat_luong"], r["ghi_chu"],
                             "TRUE" if r["tam_dung"] else "FALSE", r["chu_nhac_luc"] or "", r["ngay_sinh_be"] or "",
-                            r["em_nho"], r["ngay_sinh_em"] or ""])
+                            r["em_nho"], r["ngay_sinh_em"] or "", r["email"]])
         elif ten == "cham-soc":
             w.writerow(q.COT_CHAM_SOC)
             ch, nghi = logic.cau_hinh(conn), logic.ngay_nghi(conn)

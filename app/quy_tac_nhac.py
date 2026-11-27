@@ -591,6 +591,7 @@ COT_HO_SO = [
     "Chủ nhắc lúc",
     # đợt 2, thêm ở cuối: tab Tổng hợp lead đọc A2:Q nên không phải sửa
     "Ngày sinh bé", "Em nhỏ", "Ngày sinh em",
+    "Email",  # 11/2026, thêm ở cuối như trên
 ]
 COT_CHAM_SOC = [
     "Mã", "Mã lead", "Thời gian", "Sale", "Phương thức", "Tình trạng", "Mức quan tâm", "Phản hồi",
@@ -722,7 +723,7 @@ def tao_mau(thu_muc: Path, hom_nay: date) -> None:
         [d(10, 9), "SĐT mới", "Lan Thử", "GIA-M1", "0900000601", "Bé Na", "3 tuổi", "Mỹ Đình", "", "", "", "QC Cambridge T10", "Đã có SĐT", "0900000601", d(10, 8), d(10, 9)],
     ]
     bang = {
-        "ho-so-lead.csv": (COT_HO_SO, [r + ["FALSE", "", "", "", ""] for r in ho_so]),
+        "ho-so-lead.csv": (COT_HO_SO, [r + ["FALSE", "", "", "", "", ""] for r in ho_so]),
         "cham-soc.csv": (COT_CHAM_SOC, cham_soc),
         "sale.csv": (COT_SALE, SALE_MAU),
         "danh-muc.csv": (COT_DANH_MUC, DANH_MUC_MAU),
