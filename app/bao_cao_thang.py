@@ -1,9 +1,9 @@
 """Báo cáo tháng: số liệu dùng chung cho trang /chu/bao-cao và bản tóm tắt gửi ban giám hiệu.
 
 Ngày làm việc đầu tiên mỗi tháng (quy tắc ở quy_tac_nhac.ngay_gui_bao_cao_thang), cron 8:10 gửi bản tóm tắt
-THÁNG TRƯỚC vào nhóm Telegram quản lý (chưa nối nhóm thì từng chủ). Ngày khác cron chạy mà không làm gì.
+THÁNG TRƯỚC vào nhóm Telegram quản lý (chưa nối nhóm thì từng chủ); hôm đó lỗi thì gửi bù tới ngày 10.
 
-    python -m app.bao_cao_thang                      # cron: gửi nếu hôm nay là ngày gửi và tháng đó chưa gửi
+    python -m app.bao_cao_thang                      # cron: gửi nếu hôm nay là ngày gửi và còn nơi chưa nhận
     python -m app.bao_cao_thang --thu                # chỉ in ra, không gửi
     python -m app.bao_cao_thang --thu --thang 2026-11
 
@@ -13,6 +13,7 @@ Tin chỉ có số đếm và tên nguồn / cơ sở / chiến dịch: không t
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import os
 import sqlite3
@@ -93,9 +94,12 @@ def tom_tat(conn: sqlite3.Connection, thang: str, kem_link: bool = True) -> str:
     for c in db.danh_muc(conn, "Cơ sở"):
         d = q.thong_ke_thang([h for h in ho_so if c in logic.cac_co_so(h["Cơ sở"])], cs, thang, q.TAT_CA)
         dong.append(f"- {c}: {d['Lead mới']} · {d['Đã tham quan']} · {d['Đã đặt cọc']}")
-    d = q.thong_ke_thang([h for h in ho_so if not logic.cac_co_so(h["Cơ sở"])], cs, thang, q.TAT_CA)
-    if d["Lead mới"]:
-        dong.append(f"- Chưa rõ cơ sở: {d['Lead mới']} · {d['Đã tham quan']} · {d['Đã đặt cọc']}")
+    ds_cs = set(db.danh_muc(conn, "Cơ sở"))
+    for nhan, chon in (("Cơ sở khác", lambda c: c and not set(c) & ds_cs),  # cơ sở đã bỏ khỏi danh mục
+                       ("Chưa rõ cơ sở", lambda c: not c)):
+        d = q.thong_ke_thang([h for h in ho_so if chon(logic.cac_co_so(h["Cơ sở"]))], cs, thang, q.TAT_CA)
+        if d["Lead mới"]:
+            dong.append(f"- {nhan}: {d['Lead mới']} · {d['Đã tham quan']} · {d['Đã đặt cọc']}")
     if any(len(logic.cac_co_so(h["Cơ sở"])) > 1 for h in ho_so if h["Ngày nhận"].startswith(thang)):
         dong.append("(Lead quan tâm nhiều cơ sở được đếm ở mỗi cơ sở.)")
 
@@ -117,27 +121,44 @@ def _cuoi(thang: str, kem_link: bool, co_lead: bool) -> list[str]:
     return dong
 
 
+def _da_nhan(conn: sqlite3.Connection, thang: str) -> set[str]:
+    """Nơi đã nhận tóm tắt của `thang` (he_thong DA_GUI lưu {"thang", "da_nhan"})."""
+    try:
+        luu = json.loads(db.lay_he_thong(conn, DA_GUI) or "{}")
+    except ValueError:
+        return set()
+    return set(luu.get("da_nhan", [])) if isinstance(luu, dict) and luu.get("thang") == thang else set()
+
+
 def chay(conn: sqlite3.Connection, hom_nay: date, thu: bool = False, thang: str | None = None) -> list[tuple[str, str]]:
     """Gửi (hoặc với `thu`, chỉ trả về) tóm tắt tháng trước nếu hôm nay là ngày gửi. Trả (người nhận, nội dung)
-    đã gửi được. Mỗi tháng gửi một lần: chỉ đánh dấu đã gửi khi ít nhất một nơi nhận được, lỗi thì lần chạy sau
-    (cùng ngày, cron chạy lại tay) gửi lại. `thang` ép tháng cần xem, bỏ qua ngày gửi và dấu đã gửi."""
-    ep = thang is not None
+    đã gửi được lần này. Mỗi nơi nhận (nhóm, hoặc từng chủ) nhận một lần mỗi tháng: nơi gửi lỗi được gửi lại ở lần
+    chạy sau (cùng ngày chạy lại tay, hoặc cron các ngày gửi bù), nơi đã nhận thì không nhận trùng.
+    `thang` ép tháng cần xem: luôn chỉ là xem trước (không gửi, không ghi), bỏ qua ngày gửi."""
+    if thang is not None:
+        thu = True
     thang = thang or q.ngay_gui_bao_cao_thang(hom_nay, logic.ngay_nghi(conn))
-    if thang is None or (not ep and not thu and db.lay_he_thong(conn, DA_GUI) == thang):
+    if thang is None:
         return []
-    tin = tom_tat(conn, thang)
     nhan = telegram.nguoi_nhan_quan_ly(conn)
     if thu:
-        return [(", ".join(nhan) or "(chưa có nơi nhận: chưa nối nhóm, chủ chưa nối Telegram)", tin)]
+        return [(", ".join(nhan) or "(chưa có nơi nhận: chưa nối nhóm, chủ chưa nối Telegram)", tom_tat(conn, thang))]
     if not nhan:
-        log.warning("Chưa nối nhóm Telegram và chủ chưa nối Telegram: không gửi được báo cáo tháng %s", thang)
+        log.warning("Chưa nối nhóm Telegram và chủ chưa nối Telegram: chưa gửi được báo cáo tháng %s", thang)
         return []
-    gui = [(c, tin) for c in nhan if telegram.gui_tin(c, tin)]
+    da_nhan = _da_nhan(conn, thang)
+    con = [c for c in nhan if c not in da_nhan]
+    if not con:
+        return []
+    tin = tom_tat(conn, thang)
+    gui = [(c, tin) for c in con if telegram.gui_tin(c, tin)]
     if gui:
-        db.dat_he_thong(conn, DA_GUI, thang)
+        da_nhan |= {c for c, _ in gui}
+        db.dat_he_thong(conn, DA_GUI, json.dumps({"thang": thang, "da_nhan": sorted(da_nhan)}))
         conn.commit()
-    else:
-        log.warning("Không gửi được báo cáo tháng %s (lỗi mạng hoặc bot bị gỡ): lần chạy sau thử lại", thang)
+    if len(gui) < len(con):
+        log.warning("Không gửi được báo cáo tháng %s tới %d nơi (lỗi mạng hoặc bot bị gỡ): lần chạy sau gửi lại",
+                    thang, len(con) - len(gui))
     return gui
 
 
@@ -145,8 +166,10 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Gửi tóm tắt báo cáo tháng trước qua Telegram")
     p.add_argument("--thu", action="store_true", help="chỉ in ra, không gửi")
     p.add_argument("--ngay", help="ngày tính (YYYY-MM-DD), mặc định hôm nay")
-    p.add_argument("--thang", help="xem tháng này (YYYY-MM) thay vì tháng trước của ngày gửi")
+    p.add_argument("--thang", help="xem trước tháng này (YYYY-MM), phải kèm --thu; không gửi")
     a = p.parse_args(argv)
+    if a.thang and not a.thu:
+        p.error("--thang chỉ để xem trước: thêm --thu (báo cáo tự gửi vào ngày làm việc đầu tháng)")
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     logging.getLogger("httpx").setLevel(logging.WARNING)  # httpx ghi URL kèm token bot ở mức INFO
     hom_nay = date.fromisoformat(a.ngay) if a.ngay else dongho.hom_nay()

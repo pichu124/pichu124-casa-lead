@@ -607,13 +607,20 @@ class NgayGuiBaoCaoThang(unittest.TestCase):
 
     def test_ngay_1_la_ngay_lam_viec(self):
         self.assertEqual(q.ngay_gui_bao_cao_thang(D(2026, 12, 1)), "2026-11")  # thứ 3
-        self.assertIsNone(q.ngay_gui_bao_cao_thang(D(2026, 12, 2)))
+
+    def test_gui_bu_toi_ngay_10_neu_hom_do_chua_gui_duoc(self):
+        # VPS tắt hay Telegram lỗi đúng ngày gửi: những ngày sau vẫn là ngày gửi (app chỉ gửi nếu tháng đó chưa gửi)
+        self.assertEqual(q.ngay_gui_bao_cao_thang(D(2026, 12, 2)), "2026-11")
+        self.assertEqual(q.ngay_gui_bao_cao_thang(D(2026, 12, 10)), "2026-11")
+        # quá ngày 10 thì thôi: không gửi báo cáo cũ giữa tháng (vd ngày triển khai)
+        self.assertIsNone(q.ngay_gui_bao_cao_thang(D(2026, 12, 11)))
         self.assertIsNone(q.ngay_gui_bao_cao_thang(D(2026, 11, 30)))
 
     def test_ngay_1_roi_vao_cuoi_tuan_thi_gui_thu_2(self):
         self.assertIsNone(q.ngay_gui_bao_cao_thang(D(2026, 8, 1)))  # thứ 7
         self.assertEqual(q.ngay_gui_bao_cao_thang(D(2026, 8, 3)), "2026-07")  # thứ 2
         self.assertEqual(q.ngay_gui_bao_cao_thang(D(2026, 11, 2)), "2026-10")  # 1/11 là CN
+        self.assertIsNone(q.ngay_gui_bao_cao_thang(D(2026, 11, 1)))
 
     def test_ngay_le_dau_thang_va_thang_1(self):
         nghi = {D(2027, 1, 1)}

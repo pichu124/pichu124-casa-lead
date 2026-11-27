@@ -583,13 +583,18 @@ def thong_ke_thang(ho_so: list[dict], cham_soc: list[dict], thang: str, co_so: s
     return dem
 
 
+HAN_GUI_BU_BAO_CAO = 10  # ngày trong tháng
+
+
 def ngay_gui_bao_cao_thang(hom_nay: date, nghi: set[date] = frozenset()) -> str | None:
     """Tháng ("YYYY-MM") cần gửi báo cáo nếu hôm nay là ngày gửi, không thì None.
 
-    Gửi báo cáo THÁNG TRƯỚC vào ngày làm việc đầu tiên của tháng: ngày 1 rơi vào thứ 7, Chủ nhật hay ngày lễ
-    (tab Ngày nghỉ) thì dời tới ngày làm việc kế tiếp, để ban giám hiệu đọc trong giờ làm.
+    Gửi báo cáo THÁNG TRƯỚC từ ngày làm việc đầu tiên của tháng: ngày 1 rơi vào thứ 7, Chủ nhật hay ngày lễ
+    (tab Ngày nghỉ) thì dời tới ngày làm việc kế tiếp, để ban giám hiệu đọc trong giờ làm. Các ngày sau, tới ngày
+    HAN_GUI_BU_BAO_CAO, vẫn là ngày gửi để gửi bù khi hôm đó VPS tắt hay Telegram lỗi (app chỉ gửi nếu tháng đó
+    chưa gửi). Quá hạn đó thì thôi, kẻo triển khai giữa tháng lại gửi báo cáo cũ.
     """
-    if hom_nay != ngay_lam_viec_toi(hom_nay.replace(day=1), nghi):
+    if not ngay_lam_viec_toi(hom_nay.replace(day=1), nghi) <= hom_nay or hom_nay.day > HAN_GUI_BU_BAO_CAO:
         return None
     truoc = hom_nay.replace(day=1) - timedelta(days=1)
     return f"{truoc.year}-{truoc.month:02d}"
